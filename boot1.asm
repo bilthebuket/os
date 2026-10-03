@@ -9,6 +9,7 @@ smap_segment resb 2
 smap_offset resb 2
 
 section .data
+align 4
 dap:
 	db 0x10
 	db 0x00
@@ -43,18 +44,12 @@ stage_two:
 	dw 0x8
 	dd 0
 
-
 section .text
 	global _start
 
 _start:
-	; set vga to color text mode (might default to this but making sure)
-	mov ax, 0x3
-	int 0x10
-	jc error
-
-
-
+	xor ax, ax
+	mov ds, ax
 	mov eax, smap
 	shr eax, 0x4
 	mov [smap_segment], ax
@@ -62,9 +57,8 @@ _start:
 	and eax, 0x0F
 	mov [smap_offset], ax
 	xor ebx, ebx
+
 smap_loop:
-
-
 	xor ax, ax
 	mov es, [smap_segment]
 	mov ax, 0xE820
@@ -88,7 +82,7 @@ smap_loop:
 	mov [smap_offset], ax
 
 	mov bx, [dap + 0x2]
-	shl bx, 0x9 ; bx now has the number of bytes we want to read from disk
+	shl ebx, 0x9 ; bx now has the number of bytes we want to read from disk
 
 find_avail_memory:
 	add [smap_offset], 0x14
@@ -98,23 +92,28 @@ find_avail_memory:
 	mov di, ax
 	cmp [es:di + 0x10], 0x1
 	jne find_avail_memory
-	cmp [es:di + 0x8], bx
+	cmp [es:di + 0x8], ebx
 	jb find_avail_memory
 
 	; read stage 2 into memory
 	mov eax, [es:di]
 	shr eax, 0x4
+	mov ebx, eax
 	mov [dap + 0x6], ax
 	mov eax, [es:di]
 	and eax, 0x0F
+	add ebx, eax
 	mov [dap + 0x4], ax
-	mov ah, 0x41
-	mov bx, 0x55AA
-	mov si, dap
 	mov [boot_drive], dl
+	mov ah, 0x42
+	mov eax, dap
+	shr eax, 0x4
+	mov ds, ax
+	mov eax, dap
+	and eax, 0x0F
+	mov si, ax
 	int 0x13
 	jc error
-	mov dl, [boot_drive]
 
 	cli
 	lgdt [gdtr]
@@ -131,19 +130,9 @@ find_avail_memory:
 	mov ss, ax
 	mov [stage_two + 0x2], ebx
 
-
 	jmp far [stage_two]
 
 error:
-	cli
-	hlt
-
-debug:
-	mov ax, 0xb800
-	mov es, ax
-	mov di, 0x0
-	mov [es:di], 'A'
-	mov [es:di + 1], 0Fh
 	cli
 	hlt
 
