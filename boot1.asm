@@ -47,23 +47,22 @@ smap_loop:
 	mov bx, [dap + 0x2]
 	shl ebx, 0x9 ; bx now has the number of bytes we want to read from disk
 
-	mov edx, 0xFFFF ; we're gonna perform a far jmp to a 16 bit seg:offset which is where our code will be loaded from the disk read
-	; however, because our gdt puts the segment starting at 0x0, the maximum address we can reach with a descriptor segment + offset is 0xFFFF
-
-	; this relies on the first piece of available memory we find not colliding with the bootloader stuff loaded at 0x7c00
 find_avail_memory:
 	add cx, 0x14
 	mov es, ax
 	mov di, cx
-	cmp [es:di + 0x10], 0x1
+	cmp [es:di + 0x10], 0x1 
 	jne find_avail_memory
 	cmp [es:di + 0x8], ebx
 	jb find_avail_memory
-	mov ebp, [es:di]
+
+	mov ebp, [es:di] ; making sure we arent writing over the stack where the stage 1 bootloader is loaded
+	cmp ebp, smap_offset + 0x2
+
 	add ebp, ebx
 	jc find_avail_memory
 	sub ebp, 0x1
-	cmp ebp, edx
+	cmp ebp, 0x10FFEF
 	ja find_avail_memory
 	mov ebp, [es:di + 0x4]
 	test ebp, ebp
@@ -83,7 +82,8 @@ find_avail_memory:
 
 	; read stage 2 into memory
 	mov eax, [es:di]
-	mov ebx, [es:di] ; storing this address so we can jmp to it after entering protected mode
+	mov ebx, [es:di]
+	mov [smap_segment], ebx ; storing the address where boot2 is in smap segment because readability is fake news
 	shr eax, 0x4
 	mov [dap + 0x6], ax
 	mov eax, [es:di]
@@ -98,15 +98,27 @@ find_avail_memory:
 	int 0x13
 	jc error
 
-	mov ecx, smap
-	mov [stage_two], bx
+	push smap
 
 	cli
 	lgdt [gdtr]
 	mov eax, cr0
 	or al, 1
 	mov cr0, eax
-	jmp far [stage_two]
+	jmp 0x8:protected
+
+protected:
+bits 32
+	mov ax, 0x10
+	mov ds, ax
+	mov es, ax
+	mov fs, ax
+	mov gs, ax
+	mov ss, ax
+
+	mov eax, [smap_segment]
+	jmp eax
+bits 16
 
 error:
 	cli
@@ -166,10 +178,6 @@ dap:
 	dw 0x0
 	dw 0x0
 	dq 0x1
-
-stage_two:
-	dw 0
-	dw 0x8
 
 smap_segment:
 	dw smap + 0x280

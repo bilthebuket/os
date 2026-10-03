@@ -1,12 +1,11 @@
 #include "def.h"
 #include "mem.h"
+#include "text.h"
 
-void stage_two(void)
+__attribute__((used, section(".stage_two_entry")))
+void stage_two(smap* smap)
 {
-	asm("mov ax, 0x10");
-	asm("mov ds, ax");
-	asm("mov es, ax");
-	asm("mov fs, ax");
-	asm("mov gs, ax");
-	asm("mov ss, ax");
+	putc(0, 0, 'A', WHITE_TEXT);
+	asm("cli");
+	asm("hlt");
 }
