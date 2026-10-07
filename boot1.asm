@@ -35,8 +35,13 @@ smap_loop:
 	cmp eax, 0x534D4150
 	jne error
 	add [smap_offset], 0x14 ; again, i only care about the info in the first 20 bytes even if the bios can give me more
+	add word [smap_size], 0x1
+	cmp [smap_size], 0x20
+	jae exit_smap_loop
 	test ebx, ebx
 	jnz smap_loop
+
+exit_smap_loop:
 
 	mov eax, smap
 	sub eax, 0x14
@@ -83,7 +88,7 @@ find_avail_memory:
 	; read stage 2 into memory
 	mov eax, [es:di]
 	mov ebx, [es:di]
-	mov [smap_segment], ebx ; storing the address where boot2 is in smap segment because readability is fake news
+	mov [stage2_location], ebx
 	shr eax, 0x4
 	mov [dap + 0x6], ax
 	mov eax, [es:di]
@@ -98,7 +103,10 @@ find_avail_memory:
 	int 0x13
 	jc error
 
-	push smap
+	push word [dap + 0x2]
+	push long [stage2_location]
+	push word [smap_size]
+	push long smap
 
 	cli
 	lgdt [gdtr]
@@ -180,10 +188,16 @@ dap:
 	dq 0x1
 
 smap_segment:
-	dw smap + 0x280
+	dw 0x0
 
 smap_offset:
-	dw smap + 0x282
+	dw 0x0
+
+smap_size:
+	dw 0x0
+
+stage2_location:
+	dd 0x0
 
 smap:
 

@@ -9,6 +9,6 @@ truncate -s 512 boot2.bin
 cat boot1.bin boot2.bin > os.img
 rm boot1.bin
 rm boot2.bin
-rm boot2.elf
+#rm boot2.elf
 rm boot2.o
 rm text.o

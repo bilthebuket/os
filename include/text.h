@@ -9,5 +9,7 @@
 #define WHITE_TEXT 0x0F
 
 void putc(u32 y, u32 x, u8 c, u8 attributes);
+void puts(u32 y, u32 x, u8* str, u8 attributes);
+void putnum(u32 y, u32 x, u32 num, u8 attributes);
 
 #endif
