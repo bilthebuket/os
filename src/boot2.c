@@ -7,9 +7,18 @@
 
 // __attribute__((used...)) makes this the first thing in the binary
 // __attribute((stddcall)) makes it so args come off the stack
+// this function should never return, the return address is garbage
 __attribute__((used, section(".stage_two_entry")))
-void __attribute__((stdcall)) stage_two(smap* smap, u16 smap_size, u32 stage_two_location, u16 stage_two_sectors)
+void __attribute__((stdcall)) stage_two(u32 smap_addr, u16 smap_size, u32 stage_two_location, u16 stage_two_sectors)
 {
+	smap* smap = (void*) smap_addr;
+	putnum(0,0,smap_addr,WHITE_TEXT);
+	putnum(1,0,smap_size,WHITE_TEXT);
+	putnum(2,0,stage_two_location,WHITE_TEXT);
+	putnum(3,0,stage_two_sectors,WHITE_TEXT);
+	asm("hlt");
+
+
 	u32 stage_two_size = ((u32) stage_two_sectors) * SECTOR_SIZE;
 	u32 idt_address = 0;
 	for (u16 i = 0; i < smap_size; i++)
@@ -38,4 +47,7 @@ void __attribute__((stdcall)) stage_two(smap* smap, u16 smap_size, u32 stage_two
 			}
 		}
 	}
+
+	putnum(0, 0, idt_address, WHITE_TEXT);
+	asm("hlt");
 }

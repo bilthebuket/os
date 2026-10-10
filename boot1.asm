@@ -34,9 +34,9 @@ smap_loop:
 	jc error 
 	cmp eax, 0x534D4150
 	jne error
-	add [smap_offset], 0x14 ; again, i only care about the info in the first 20 bytes even if the bios can give me more
+	add word [smap_offset], 0x14 ; again, i only care about the info in the first 20 bytes even if the bios can give me more
 	add word [smap_size], 0x1
-	cmp [smap_size], 0x20
+	cmp word [smap_size], 0x20
 	jae exit_smap_loop
 	test ebx, ebx
 	jnz smap_loop
@@ -56,7 +56,7 @@ find_avail_memory:
 	add cx, 0x14
 	mov es, ax
 	mov di, cx
-	cmp [es:di + 0x10], 0x1 
+	cmp long [es:di + 0x10], 0x1 
 	jne find_avail_memory
 	cmp [es:di + 0x8], ebx
 	jb find_avail_memory
@@ -107,6 +107,7 @@ find_avail_memory:
 	push long [stage2_location]
 	push word [smap_size]
 	push long smap
+	push long 0x0 ; push garbage address because gcc expects stage2 to be entered as a call and not a jmp
 
 	cli
 	lgdt [gdtr]
@@ -124,7 +125,7 @@ bits 32
 	mov gs, ax
 	mov ss, ax
 
-	mov eax, [smap_segment]
+	mov eax, [stage2_location]
 	jmp eax
 bits 16
 
@@ -141,14 +142,14 @@ debug:
 	mov ch, ah
 	shr ch, 0x4
 	add ch, 'A'
-	mov [es:di], ch
-	mov [es:di + 1], 0fh
+	mov byte [es:di], ch
+	mov byte [es:di + 1], 0fh
 
 	mov ch, ah
 	and ch, 0xF
 	add ch, 'A'
-	mov [es:di + 2], ch
-	mov [es:di + 3], 0fh
+	mov byte [es:di + 2], ch
+	mov byte [es:di + 3], 0fh
 
 	cli
 	hlt
@@ -182,7 +183,7 @@ align 4
 dap:
 	db 0x10
 	db 0x00
-	dw 0x1 ; read 1 sector
+	dw 0x2 ; read 1 sector
 	dw 0x0
 	dw 0x0
 	dq 0x1

@@ -12,8 +12,8 @@ void putc(u32 y, u32 x, u8 c, u8 attributes)
 		return;
 	}
 
-	buf[y * BYTES_PER_CELL + x] = c;
-	buf[y * BYTES_PER_CELL + x + 1] = attributes;
+	buf[y * SCREEN_WIDTH * BYTES_PER_CELL + x * BYTES_PER_CELL] = c;
+	buf[y * SCREEN_WIDTH * BYTES_PER_CELL + x * BYTES_PER_CELL + 1] = attributes;
 }
 
 void puts(u32 y, u32 x, u8* str, u8 attributes)
@@ -23,8 +23,6 @@ void puts(u32 y, u32 x, u8* str, u8 attributes)
 		putc(y, x + i, str[i], attributes);
 	}
 }
-
-#define MAX_DIGITS 10
 
 void putnum(u32 y, u32 x, u32 num, u8 attributes)
 {
