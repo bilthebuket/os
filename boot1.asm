@@ -9,6 +9,8 @@ _start:
 	mov sp, 0x7c00
 	sti
 
+	mov ax, [dap + 0x2]
+	mov [stage2_sectors], ax
 	mov [boot_drive], dl
 	mov ah, dl
 
@@ -73,6 +75,9 @@ find_avail_memory:
 	test ebp, ebp
 	jnz find_avail_memory
 
+	mov eax, [es:di]
+	mov [stage2_location], eax 
+
 	mov dl, [boot_drive]
 	mov ah, 0x41
 	mov bx, 0x55AA
@@ -86,12 +91,10 @@ find_avail_memory:
 	jz error
 
 	; read stage 2 into memory
-	mov eax, [es:di]
-	mov ebx, [es:di]
-	mov [stage2_location], ebx
+	mov eax, [stage2_location]
 	shr eax, 0x4
 	mov [dap + 0x6], ax
-	mov eax, [es:di]
+	mov eax, [stage2_location]
 	and eax, 0x0F
 	mov [dap + 0x4], ax
 	mov ax, dap ; we know dap is somewhere around 0x7c00 so it will be less than 0xFFFF
@@ -103,8 +106,11 @@ find_avail_memory:
 	int 0x13
 	jc error
 
-	push word [dap + 0x2]
+	; gcc expects all args to be padded to 4 bytes each
+	push word 0x0 ; padding
+	push word [stage2_sectors]
 	push long [stage2_location]
+	push word 0x0 ; padding
 	push word [smap_size]
 	push long smap
 	push long 0x0 ; push garbage address because gcc expects stage2 to be entered as a call and not a jmp
@@ -183,7 +189,7 @@ align 4
 dap:
 	db 0x10
 	db 0x00
-	dw 0x2 ; read 1 sector
+	dw 0x2 ; read 2 sectors
 	dw 0x0
 	dw 0x0
 	dq 0x1
@@ -199,6 +205,9 @@ smap_size:
 
 stage2_location:
 	dd 0x0
+
+stage2_sectors:
+	dw 0x0
 
 smap:
 
