@@ -13,7 +13,7 @@ void __attribute__((stdcall)) stage_two(u32 smap_addr, u16 smap_size, u32 stage_
 {
 	smap* smap = (void*) smap_addr;
 
-	u32 stage_two_size = ((u32) stage_two_sectors) * SECTOR_SIZE;
+	u32 end_of_smap = smap_addr + smap_size * sizeof(smap);
 	u32 idt_address = 0;
 	for (u16 i = 0; i < smap_size; i++)
 	{
@@ -21,17 +21,17 @@ void __attribute__((stdcall)) stage_two(u32 smap_addr, u16 smap_size, u32 stage_
 		{
 			u32 address = smap[i].addr_low;
 			u32 size = smap[i].length_low;
-			if (address < stage_two_location + stage_two_size)
+
+			if (address < end_of_smap)
 			{
-				if (size > stage_two_location + stage_two_size - address)
-				{
-					size -= stage_two_location + stage_two_size - address;
-					address += stage_two_location + stage_two_size - address;
-				}
-				else
+				u32 diff = end_of_smap - address;
+				if (size < diff)
 				{
 					continue;
 				}
+
+				address += diff;
+				size -= diff;
 			}
 
 			if (size >= IDT_SIZE)
