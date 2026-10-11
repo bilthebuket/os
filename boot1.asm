@@ -58,25 +58,45 @@ find_avail_memory:
 	add cx, 0x14
 	mov es, ax
 	mov di, cx
+	
+	; checking that this chunk is not reserved, is big enough, and the high order 32 bits of the address are zero
 	cmp long [es:di + 0x10], 0x1 
 	jne find_avail_memory
 	cmp [es:di + 0x8], ebx
 	jb find_avail_memory
+	mov ebp, [es:di + 0x4]
+	test ebp, ebp
+	jnz find_avail_memory
 
 	mov ebp, [es:di] ; making sure we arent writing over the stack where the stage 1 bootloader is loaded
-	cmp ebp, smap_offset + 0x2
-
 	add ebp, ebx
 	jc find_avail_memory
 	sub ebp, 0x1
 	cmp ebp, 0x10FFEF
 	ja find_avail_memory
-	mov ebp, [es:di + 0x4]
-	test ebp, ebp
-	jnz find_avail_memory
+	mov ebp, [es:di]
+	cmp ebp, smap + 0x280
+	jb fix_collision
+	jmp exit_find_avail_memory
 
-	mov eax, [es:di]
-	mov [stage2_location], eax 
+fix_collision:
+	add ebp, ebx
+	cmp ebp, 0x7400 ; 0x7400 gives us 2048 bytes on the stack (its 0x7C00 where sector 0 gets loaded minus 0x800)
+	ja fix_collision_two
+	mov ebp, [es:di]
+	jmp exit_find_avail_memory
+
+fix_collision_two:
+	mov edx, [es:di + 0x8]
+	mov ebp, smap + 0x280
+	sub ebp, [es:di]
+	sub edx, ebp
+	cmp edx, ebx
+	jb find_avail_memory
+	mov ebp, smap + 0x280
+
+exit_find_avail_memory:
+	mov [stage2_location], ebp
 
 	mov dl, [boot_drive]
 	mov ah, 0x41
