@@ -1,9 +1,9 @@
 #include "def.h"
 #include "mem.h"
 #include "text.h"
+#include "interrupts.h"
 
 #define SECTOR_SIZE 512
-#define IDT_SIZE 2048
 
 // __attribute__((used...)) makes this the first thing in the binary
 // __attribute((stddcall)) makes it so args come off the stack
@@ -42,6 +42,7 @@ void __attribute__((stdcall)) stage_two(u32 smap_addr, u16 smap_size, u32 stage_
 		}
 	}
 
-	putnum(0, 0, idt_address, WHITE_TEXT);
+	load_idt(idt_address, stage_two_location);
+	u32 x = 3 / 0;
 	asm("hlt");
 }

@@ -14,6 +14,6 @@ typedef struct
 	u32 type;
 } smap;
 
-_Static_assert(sizeof(smap) == 5 * sizeof(unsigned int), "smap struct has been padded (big no no)");
+_Static_assert(sizeof(smap) == 5 * sizeof(u32), "smap struct has been padded (big no no)");
 
 #endif
