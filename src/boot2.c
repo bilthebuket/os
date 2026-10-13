@@ -3,9 +3,6 @@
 #include "text.h"
 #include "interrupts.h"
 
-#define SECTOR_SIZE 512
-
-// __attribute__((used...)) makes this the first thing in the binary
 // __attribute((stddcall)) makes it so args come off the stack
 // this function should never return, the return address is garbage
 __attribute__((used, section(".stage_two_entry")))
