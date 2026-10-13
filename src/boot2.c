@@ -43,6 +43,6 @@ void __attribute__((stdcall)) stage_two(u32 smap_addr, u16 smap_size, u32 stage_
 	}
 
 	load_idt(idt_address, stage_two_location);
-	u32 x = 3 / 0;
+	asm("cli");
 	asm("hlt");
 }

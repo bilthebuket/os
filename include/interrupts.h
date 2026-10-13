@@ -3,7 +3,7 @@
 
 #include "def.h"
 
-#define IDT_SIZE 16384
+#define IDT_SIZE 2048
 
 typedef struct
 {
@@ -14,7 +14,7 @@ typedef struct
 	u16 offset_high;
 } InterruptDescriptor;
 
-_Static_assert(sizeof(InterruptDescriptor) == 4 * sizeof(u16), "interrupt descriptor struct has been padded (big no no)");
+_Static_assert(sizeof(InterruptDescriptor) == 8, "interrupt descriptor struct has been padded (big no no)");
 
 void load_idt(u32 address, u32 code_location);
 
