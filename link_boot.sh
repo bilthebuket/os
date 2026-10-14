@@ -17,3 +17,4 @@ rm boot2.o
 rm text.o
 rm interrupts.o
 rm interrupts_asm.o
+rm disk_asm.o
