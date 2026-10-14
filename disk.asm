@@ -2,7 +2,7 @@ bits 32
 
 section .text:
 
-global requst_disk_write
+global request_disk_write
 global request_disk_read
 
 error:
@@ -50,7 +50,8 @@ request_disk_generic:
 	out dx, al
 
 	mov edx, 0x1F7 ; send command
-	out dx, cl
+	mov al, cl
+	out dx, al
 	
 	in al, dx
 	test al, 0x01

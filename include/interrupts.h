@@ -16,6 +16,6 @@ typedef struct
 
 _Static_assert(sizeof(InterruptDescriptor) == 8, "interrupt descriptor struct has been padded (big no no)");
 
-void load_idt(u32 address, u32 code_location);
+void setup_interrupts(u32 address, u32 code_location);
 
 #endif

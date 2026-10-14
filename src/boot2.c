@@ -2,6 +2,7 @@
 #include "mem.h"
 #include "text.h"
 #include "interrupts.h"
+#include "disk.h"
 
 // __attribute((stddcall)) makes it so args come off the stack
 // this function should never return, the return address is garbage
@@ -39,7 +40,15 @@ void __attribute__((stdcall)) stage_two(u32 smap_addr, u16 smap_size, u32 stage_
 		}
 	}
 
-	load_idt(idt_address, stage_two_location);
+	setup_interrupts(idt_address, stage_two_location);
+	u8 shit[SECTOR_SIZE];
+	for (u32 i = 0; i < SECTOR_SIZE; i++)
+	{
+		shit[i] = 'A';
+	}
+	prep_disk_isr((u32) &shit[0], 256, DISK_WRITE);
+	request_disk_write(0, 1);
+	while (1) {}
 	asm("cli");
 	asm("hlt");
 }

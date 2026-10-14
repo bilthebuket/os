@@ -2,9 +2,11 @@
 #include "text.h"
 
 extern void default_isr(void);
+extern void disk_isr(void);
 extern void __attribute__((stdcall)) call_lidt(u32);
+extern void pic_init(void);
 
-void load_idt(u32 address, u32 code_location)
+void setup_interrupts(u32 address, u32 code_location)
 {
 	InterruptDescriptor* table = (void*) address;
 	u32 num_entries = IDT_SIZE / sizeof(InterruptDescriptor);
@@ -20,6 +22,12 @@ void load_idt(u32 address, u32 code_location)
 		table[i] = id;
 	}
 
+	id.offset_low = (((u32) &disk_isr) + code_location) & 0xFFFF;
+	id.offset_high = (((u32) &disk_isr) + code_location) >> 16;
+	table[0x2E] = id;
+	table[0x2F] = id;
+
 	call_lidt(address);
+	pic_init();
 	asm("sti");
 }
