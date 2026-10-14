@@ -2,10 +2,17 @@ bits 32
 
 section .text:
 
+extern putnum
+
 global request_disk_write
 global request_disk_read
 
 error:
+	push long 0x0F
+	push eax
+	push long 0x0
+	push long 0x1
+	call putnum
 	mov eax, 0
 	ret 8
 

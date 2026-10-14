@@ -47,7 +47,10 @@ void __attribute__((stdcall)) stage_two(u32 smap_addr, u16 smap_size, u32 stage_
 		shit[i] = 'A';
 	}
 	prep_disk_isr((u32) &shit[0], 256, DISK_WRITE);
-	request_disk_write(0, 1);
+	if (!request_disk_write(0, 1))
+	{
+		putnum(0,0,1,WHITE_TEXT);
+	}
 	while (1) {}
 	asm("cli");
 	asm("hlt");

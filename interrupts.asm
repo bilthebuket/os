@@ -11,6 +11,21 @@ global disk_isr
 global prep_disk_isr
 global call_lidt
 
+global pic_zero
+global pic_one
+global pic_two
+global pic_three
+global pic_four
+global pic_five
+global pic_six
+global pic_seven
+global pic_eight
+global pic_nine
+global pic_ten
+global pic_eleven
+global pic_twelve
+global pic_thirteen
+
 pic_init:
 	mov dx, 0x20
 	mov al, 0x11
@@ -39,10 +54,12 @@ pic_init:
 	out dx, al
 
 	mov dx, 0x21
-	mov al, 0x0
-	out dx, al ; unmask
+	mov al, 0xFB
+	out dx, al ; unmasking only disk irqs because thats what ive written so far
 	mov dx, 0xA1
+	mov al, 0x3F
 	out dx, al
+	ret
 
 default_isr:
 	pushad
@@ -70,9 +87,6 @@ slave_isr_end:
 	out dx, al
 	mov dx, 0xA0
 	out dx, al
-
-	cli
-	hlt
 
 	popad
 	iret
