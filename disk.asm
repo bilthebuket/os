@@ -1,9 +1,9 @@
 bits 32
+%include "constants.asm"
 
 section .text:
 
-extern STAGE2_LOCATION
-
+extern puts
 extern putnum
 
 global request_disk_write
@@ -33,12 +33,13 @@ request_disk_generic:
 	cmp al, 0x40
 	jne error
 
-	; for now we are only handling master drive
+	mov ecx, [STAGE2_LOCATION]
+	mov byte cl, [drive_bitmask + ecx]
 	mov ebx, [esp + 0x4]
 	mov eax, ebx
 	mov edx, 0x01F6 ; send drive and bits 24-27 of lba
 	shr eax, 24
-	or al, 11100000b
+	or al, cl
 	out dx, al
 
 	mov edx, 0x01F2 ; send number of sectors
@@ -70,9 +71,63 @@ request_disk_generic:
 	mov eax, 1
 	ret 8
 
+disk_identify:
+	mov al, 0
+	mov dx, 0x1F2
+	out dx, al
+	mov dx, 0x1F3
+	out dx, al
+	mov dx, 0x1F4
+	out dx, al
+	mov dx, 0x1F5
+	out dx, al
+	mov al, 0xEC
+	mov dx, 0x1F7
+	out dx, al
+	in al, dx
+	ret
+
 disk_init:
+	mov ebx, [STAGE2_LOCATION]
+
 	mov dx, 0x01F6
-	mov al, 0xA0 ; select master drive
+	mov al, 0xA0 ; try master drive
 	out dx, al
 
+	call disk_identify
+	cmp al, 0
+	je continue
+
+	add ebx, drive_bitmask
+	mov byte [ebx], 0xA0
+	ret
+
+continue:
+	mov dx, 0x01F6
+	mov al, 0xB0 ; try slave drive
+	out dx, al
+
+	call disk_identify
+	cmp al, 0
+	jne found_disk
+	
+	add ebx, error_string
+	push 0xF
+	push ebx
+	push 0x0
+	push 0x0
+	call puts
+	cli
+	hlt
+
+found_disk:
+	add ebx, drive_bitmask
+	mov byte [ebx], 0xB0
+	ret
+
 section .data:
+
+drive_bitmask:
+	db 0x0
+
+error_string: db "could not find a disk that exists", 0

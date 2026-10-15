@@ -1,5 +1,5 @@
 bits 32
-STAGE2_LOCATION equ 0x7BFC
+%include "constants.asm"
 
 section .text:
 
