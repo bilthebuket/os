@@ -51,8 +51,8 @@ void __attribute__((stdcall)) stage_two(u32 smap_addr, u16 smap_size, u32 stage_
 	if (!request_disk_write(0, 1))
 	{
 		putnum(0,0,1,WHITE_TEXT);
+		asm("cli");
+		asm("hlt");
 	}
-	while (1) {}
-	asm("cli");
 	asm("hlt");
 }

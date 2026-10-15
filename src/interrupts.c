@@ -5,6 +5,7 @@ extern void default_isr(void);
 extern void disk_isr(void);
 extern void __attribute__((stdcall)) call_lidt(u32);
 extern void pic_init(void);
+extern void ata_enable_interrupts(void);
 
 void setup_interrupts(u32 address, u32 code_location)
 {
@@ -29,5 +30,6 @@ void setup_interrupts(u32 address, u32 code_location)
 
 	call_lidt(address);
 	pic_init();
+	ata_enable_interrupts();
 	asm("sti");
 }
