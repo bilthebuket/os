@@ -2,10 +2,13 @@ bits 32
 
 section .text:
 
+extern STAGE2_LOCATION
+
 extern putnum
 
 global request_disk_write
 global request_disk_read
+global disk_init
 
 error:
 	push long 0x0F
@@ -67,4 +70,9 @@ request_disk_generic:
 	mov eax, 1
 	ret 8
 
+disk_init:
+	mov dx, 0x01F6
+	mov al, 0xA0 ; select master drive
+	out dx, al
 
+section .data:

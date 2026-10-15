@@ -1,4 +1,5 @@
 bits 32
+STAGE2_LOCATION equ 0x7BFC
 
 section .text:
 
@@ -10,21 +11,6 @@ global default_isr
 global disk_isr
 global prep_disk_isr
 global call_lidt
-
-global pic_zero
-global pic_one
-global pic_two
-global pic_three
-global pic_four
-global pic_five
-global pic_six
-global pic_seven
-global pic_eight
-global pic_nine
-global pic_ten
-global pic_eleven
-global pic_twelve
-global pic_thirteen
 
 pic_init:
 	mov dx, 0x20
@@ -63,8 +49,10 @@ pic_init:
 
 default_isr:
 	pushad
+	mov ebx, [STAGE2_LOCATION]
+	add ebx, error_string
 	push byte 0x0F
-	push error_string
+	push ebx
 	push long 0x0
 	push long 0x0
 	call puts
@@ -72,8 +60,10 @@ default_isr:
 	iret
 
 disk_error:
+	mov ebx, [STAGE2_LOCATION]
+	add ebx, disk_error_string
 	push byte 0x0F
-	push disk_error_string
+	push ebx
 	push long 0x0
 	push long 0x0
 	call puts
@@ -101,7 +91,8 @@ disk_isr:
 	test al, 0x08
 	jz disk_error
 
-	mov al, [disk_info + 0x8]
+	mov ebx, [STAGE2_LOCATION]
+	mov al, [ebx + disk_info + 0x8]
 	cmp al, 0x1
 	je disk_read
 	cmp al, 0x2
@@ -109,30 +100,34 @@ disk_isr:
 	jmp disk_error
 
 disk_read:
-	mov ecx, [disk_info + 0x4]
-	mov edi, disk_info
+	mov ecx, [ebx + disk_info + 0x4]
+	add ebx, disk_info
+	mov edi, ebx
 	rep insw
 	jmp slave_isr_end
 
 disk_write:
-	mov ecx, [disk_info + 0x4]
-	mov esi, disk_info
+	mov ecx, [ebx + disk_info + 0x4]
+	add ebx, disk_info
+	mov esi, ebx
 	rep outsw
 	jmp slave_isr_end
 
 prep_disk_isr:
+	mov ebx, [STAGE2_LOCATION]
 	mov eax, [esp + 0x4]
-	mov [disk_info], eax
+	mov [ebx + disk_info], eax
 	mov eax, [esp + 0x8]
-	mov [disk_info + 0x4], eax
+	mov [ebx + disk_info + 0x4], eax
 	mov al, [esp + 0xC]
-	mov [disk_info + 0x8], al
+	mov [ebx + disk_info + 0x8], al
 	ret 0xC
 
 call_lidt:
+	mov ebx, [STAGE2_LOCATION]
 	mov long eax, [esp + 0x4]
-	mov long [idt + 0x2], eax
-	lidt [idt]
+	mov long [ebx + idt + 0x2], eax
+	lidt [ebx + idt]
 	ret 4
 	
 section .data:

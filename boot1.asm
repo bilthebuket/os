@@ -6,7 +6,7 @@ _start:
 	xor ax, ax
 	mov ds, ax
 	mov ss, ax
-	mov sp, 0x7c00
+	mov sp, 0x7bFc ; we are going to put the location of stage two inbetween the stack and where stage 1 is loaded
 	sti
 
 	mov ax, [dap + 0x2]
@@ -135,6 +135,9 @@ exit_find_avail_memory:
 	push long smap
 	push long 0x0 ; push garbage address because gcc expects stage2 to be entered as a call and not a jmp
 
+	mov eax, [stage2_location]
+	mov [0x7BFC], eax
+
 	cli
 	lgdt [gdtr]
 	mov eax, cr0
@@ -156,27 +159,6 @@ bits 32
 bits 16
 
 error:
-	cli
-	hlt
-
-debug:
-	mov bx, 0xb800
-	mov es, bx
-	xor bx, bx
-	mov di, bx
-
-	mov ch, ah
-	shr ch, 0x4
-	add ch, 'A'
-	mov byte [es:di], ch
-	mov byte [es:di + 1], 0fh
-
-	mov ch, ah
-	and ch, 0xF
-	add ch, 'A'
-	mov byte [es:di + 2], ch
-	mov byte [es:di + 3], 0fh
-
 	cli
 	hlt
 

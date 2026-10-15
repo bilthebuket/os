@@ -41,7 +41,8 @@ void __attribute__((stdcall)) stage_two(u32 smap_addr, u16 smap_size, u32 stage_
 	}
 
 	setup_interrupts(idt_address, stage_two_location);
-	u8 shit[SECTOR_SIZE];
+	disk_init();
+	/*u8 shit[SECTOR_SIZE];
 	for (u32 i = 0; i < SECTOR_SIZE; i++)
 	{
 		shit[i] = 'A';
@@ -51,7 +52,7 @@ void __attribute__((stdcall)) stage_two(u32 smap_addr, u16 smap_size, u32 stage_
 	{
 		putnum(0,0,1,WHITE_TEXT);
 	}
-	while (1) {}
+	while (1) {}*/
 	asm("cli");
 	asm("hlt");
 }
