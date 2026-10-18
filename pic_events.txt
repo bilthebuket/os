@@ -1,0 +1,5 @@
+pic_set_irq
+pic_update_irq
+pic_interrupt
+pic_ioport_read
+pic_ioport_write

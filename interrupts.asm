@@ -87,6 +87,12 @@ slave_isr_end:
 disk_isr:
 	pushad
 
+	push long 0xF
+	push long 1
+	push long 0x0
+	push long 0x0
+	call putnum
+
 	mov edx, 0x1F7
 	in al, dx
 	test al, 0x01
@@ -104,15 +110,13 @@ disk_isr:
 
 disk_read:
 	mov ecx, [ebx + disk_info + 0x4]
-	add ebx, disk_info
-	mov edi, ebx
+	mov edi, [ebx + disk_info]
 	rep insw
 	jmp slave_isr_end
 
 disk_write:
 	mov ecx, [ebx + disk_info + 0x4]
-	add ebx, disk_info
-	mov esi, ebx
+	mov esi, [ebx + disk_info]
 	rep outsw
 	jmp slave_isr_end
 

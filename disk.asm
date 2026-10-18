@@ -81,12 +81,12 @@ request_disk_generic:
 	mov al, cl
 	out dx, al
 
-	call disk_wait
+	call disk_wait_alternate
 	
 	in al, dx
 	test al, 0x01
 	jnz error
-
+	
 	mov eax, 1
 	ret 8
 
@@ -109,7 +109,7 @@ disk_init:
 	mov ebx, [STAGE2_LOCATION]
 
 	mov dx, 0x01F6
-	mov al, 0xA0 ; try master drive
+	mov al, 0xE0 ; try master drive
 	out dx, al
 
 	call disk_wait
@@ -123,12 +123,12 @@ disk_init:
 	cmp al, 0
 	je continue
 
-	mov cx, 0xA0
+	mov cx, 0xE0
 	jmp found_disk
 
 continue:
 	mov dx, 0x01F6
-	mov al, 0xB0 ; try slave drive
+	mov al, 0xF0 ; try slave drive
 	out dx, al
 
 	call disk_wait
@@ -136,7 +136,7 @@ continue:
 	cmp cx, DISK_TIMEOUT
 	jae couldnt_find_disk
 	
-	mov cx, 0xB0
+	mov cx, 0xF0
 	call disk_identify
 	call disk_wait
 	in al, dx
@@ -154,10 +154,8 @@ couldnt_find_disk:
 	hlt
 
 found_disk:
-	add ebx, drive_bitmask
-	mov byte [ebx], cl
+	mov byte [ebx + drive_bitmask], cl
 
-	mov ebx, [STAGE2_LOCATION]
 	call wait_for_busy_disk
 	cmp cx, DISK_TIMEOUT
 	jae couldnt_find_disk
@@ -198,7 +196,16 @@ poll:
 	add cx, 0x1
 	cmp cx, DISK_SELECT_WARMUP
 	jb poll
+	ret
 
+disk_wait_alternate:
+	mov cx, 0x0
+	mov dx, 0x3F6
+poll_alternate:
+	in al, dx
+	add cx, 0x1
+	cmp cx, DISK_SELECT_WARMUP
+	jb poll_alternate
 	ret
 
 ata_enable_interrupts:
