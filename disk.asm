@@ -5,6 +5,7 @@ section .text:
 
 extern puts
 extern putnum
+extern prep_disk_isr
 
 global request_disk_write
 global request_disk_read
@@ -30,11 +31,42 @@ error:
 	mov eax, 0
 	ret 8
 
+disk_read:
+	mov edx, 0x1F0
+	mov ebx, [STAGE2_LOCATION]
+	mov ecx, 0x100
+	mov edi, [ebx + buffer_address]
+	rep insw
+	ret
+
+disk_write:
+	mov edx, 0x1F0
+	mov ebx, [STAGE2_LOCATION]
+	mov ecx, 0x0
+	mov esi, [ebx + buffer_address]
+	; using loop instead rep outsw because we need a delay in between writes to 0x1f0
+write_loop:
+	mov word ax, [esi]
+	out dx, ax
+	add esi, 2
+	add ecx, 1
+	cmp ecx, 0x100
+	jb write_loop
+	ret
+
 request_disk_read:
+	mov ebx, [STAGE2_LOCATION]
+	add ebx, disk_read
+	push ebx
+	call prep_disk_isr
 	mov cl, 0x20 ; read with retry
 	jmp request_disk_generic
 
 request_disk_write:
+	mov ebx, [STAGE2_LOCATION]
+	add ebx, disk_write
+	push ebx
+	call prep_disk_isr
 	mov cl, 0x30 ; write with retry
 	jmp request_disk_generic
 
@@ -51,6 +83,10 @@ request_disk_generic:
 	jz error
 
 	mov ebx, [STAGE2_LOCATION]
+
+	mov eax, [esp + 0x8]
+	mov [ebx + buffer_address], eax
+
 	mov byte bl, [drive_bitmask + ebx]
 	mov ebp, [esp + 0x4]
 	mov eax, ebp
@@ -82,7 +118,7 @@ request_disk_generic:
 	out dx, al
 
 	call disk_wait_alternate
-	
+
 	in al, dx
 	test al, 0x01
 	jnz error
@@ -144,7 +180,7 @@ continue:
 	jne found_disk
 	
 couldnt_find_disk:
-	add ebx, error_string
+	add ebx, disk_error_string
 	push 0xF
 	push ebx
 	push 0x0
@@ -200,7 +236,7 @@ poll:
 
 disk_wait_alternate:
 	mov cx, 0x0
-	mov dx, 0x3F6
+	mov edx, 0x3F6
 poll_alternate:
 	in al, dx
 	add cx, 0x1
@@ -209,7 +245,7 @@ poll_alternate:
 	ret
 
 ata_enable_interrupts:
-	mov dx, 0x3F6
+	mov edx, 0x3F6
 	mov al, 0x0
 	out dx, al
 	ret
@@ -219,4 +255,7 @@ section .data:
 drive_bitmask:
 	db 0x0
 
-error_string: db "could not find a disk that exists", 0
+buffer_address:
+	dd 0x0
+
+disk_error_string: db "could not find a disk that exists", 0

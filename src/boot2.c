@@ -47,12 +47,13 @@ void __attribute__((stdcall)) stage_two(u32 smap_addr, u16 smap_size, u32 stage_
 	{
 		stuff[i] = 'A';
 	}
-	prep_disk_isr((u32) &stuff[0], 256, DISK_READ);
-	if (!request_disk_read(0, 1))
+	if (!request_disk_read(0, 1, (u32) &stuff[0]))
 	{
 		putnum(0,0,1,WHITE_TEXT);
 		asm("cli");
 		asm("hlt");
 	}
+idle:
 	asm("hlt");
+	goto idle;
 }
