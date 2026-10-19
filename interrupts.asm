@@ -100,6 +100,7 @@ disk_isr:
 	test al, 0x08
 	jz disk_error
 
+	mov edx, 0x1F0
 	mov ebx, [STAGE2_LOCATION]
 	mov al, [ebx + disk_info + 0x8]
 	cmp al, 0x1
