@@ -9,6 +9,7 @@ extern putnum
 global pic_init
 global default_isr
 global disk_isr
+global slave_isr_handle_spurious
 global prep_disk_isr
 global call_lidt
 
@@ -81,6 +82,25 @@ slave_isr_end:
 	popad
 	iret
 
+slave_isr_handle_spurious:
+	pushad
+
+	mov dx, 0x0B
+	mov al, 0xA0
+	out dx, al
+	in al, dx
+	test al, 0x80
+	jz is_spurious
+
+	jmp disk_error ; a secondary ata channel interrupt was generated which isnt supposed to happen
+
+is_spurious: ; send eoi to the master but not the slave
+	mov al, 0x20
+	mov dx, 0x20
+	out dx, al
+	popad
+	iret
+
 disk_isr:
 	pushad
 
@@ -89,7 +109,7 @@ disk_isr:
 	test al, 0x01
 	jnz disk_error
 	test al, 0x08
-	jz disk_error
+	jz slave_isr_end ; do nothing if controller isnt ready for read/write
 
 	mov ebx, [STAGE2_LOCATION]
 	mov eax, [disk_func_addr + ebx]

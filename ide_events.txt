@@ -4,8 +4,3 @@ ide_ctrl_write
 ide_ioport_write
 ide_ioport_read
 ide_data_readw
-pic_set_irq
-pic_update_irq
-pic_interrupt
-pic_ioport_read
-pic_ioport_write

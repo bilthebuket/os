@@ -29,21 +29,33 @@ error:
 	push long 0x1
 	call putnum
 	mov eax, 0
-	ret 8
+	ret 0xC
 
 disk_read:
-	mov edx, 0x1F0
 	mov ebx, [STAGE2_LOCATION]
+	mov eax, [ebx + disk_request_info + 0x4]
+	test eax, eax
+	jz end
+	sub eax, 1
+	mov [ebx + disk_request_info + 0x4], eax
+	mov edx, 0x1F0
 	mov ecx, 0x100
-	mov edi, [ebx + buffer_address]
+	mov edi, [ebx + disk_request_info]
 	rep insw
+	mov [ebx + disk_request_info], edi
+end:
 	ret
 
 disk_write:
-	mov edx, 0x1F0
 	mov ebx, [STAGE2_LOCATION]
+	mov eax, [ebx + disk_request_info + 0x4]
+	test eax, eax
+	jz end
+	sub eax, 1
+	mov [ebx + disk_request_info + 0x4], eax
+	mov edx, 0x1F0
 	mov ecx, 0x0
-	mov esi, [ebx + buffer_address]
+	mov esi, [ebx + disk_request_info]
 	; using loop instead rep outsw because we need a delay in between writes to 0x1f0
 write_loop:
 	mov word ax, [esi]
@@ -52,6 +64,7 @@ write_loop:
 	add ecx, 1
 	cmp ecx, 0x100
 	jb write_loop
+	mov [ebx + disk_request_info], esi
 	ret
 
 request_disk_read:
@@ -60,7 +73,10 @@ request_disk_read:
 	push ebx
 	call prep_disk_isr
 	mov cl, 0x20 ; read with retry
-	jmp request_disk_generic
+	call request_disk_generic
+
+	mov eax, 1
+	ret 8
 
 request_disk_write:
 	mov ebx, [STAGE2_LOCATION]
@@ -68,7 +84,15 @@ request_disk_write:
 	push ebx
 	call prep_disk_isr
 	mov cl, 0x30 ; write with retry
-	jmp request_disk_generic
+	call request_disk_generic
+
+	mov edx, 0x1F7
+	in al, dx
+	test al, 0x8
+	jz error
+	call disk_write
+	mov eax, 1
+	ret 8
 
 request_disk_generic:
 	push ecx
@@ -84,11 +108,13 @@ request_disk_generic:
 
 	mov ebx, [STAGE2_LOCATION]
 
-	mov eax, [esp + 0x8]
-	mov [ebx + buffer_address], eax
+	mov eax, [esp + 0x10]
+	mov [ebx + disk_request_info], eax
+	mov eax, [esp + 0xC]
+	mov [ebx + disk_request_info + 0x4], eax
 
 	mov byte bl, [drive_bitmask + ebx]
-	mov ebp, [esp + 0x4]
+	mov ebp, [esp + 0x8]
 	mov eax, ebp
 	mov edx, 0x01F6 ; send drive and bits 24-27 of lba
 	shr eax, 24
@@ -96,7 +122,7 @@ request_disk_generic:
 	out dx, al
 
 	mov edx, 0x01F2 ; send number of sectors
-	mov eax, [esp + 0x8]
+	mov eax, [esp + 0xC]
 	out dx, al
 
 	mov edx, 0x1F3 ; send bits 0-7 of lba
@@ -123,8 +149,7 @@ request_disk_generic:
 	test al, 0x01
 	jnz error
 	
-	mov eax, 1
-	ret 8
+	ret
 
 disk_identify:
 	mov al, 0
@@ -255,7 +280,8 @@ section .data:
 drive_bitmask:
 	db 0x0
 
-buffer_address:
-	dd 0x0
+disk_request_info:
+	dd 0x0 ; buffer address
+	dd 0x0 ; number of sectors to read/write
 
 disk_error_string: db "could not find a disk that exists", 0
