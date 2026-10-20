@@ -44,12 +44,12 @@ void __attribute__((stdcall)) stage_two(u32 smap_addr, u16 smap_size, u32 stage_
 	
 	disk_init();
 	setup_interrupts(idt_address, stage_two_location);
-	u8 stuff[SECTOR_SIZE];
-	for (u32 i = 0; i < SECTOR_SIZE; i++)
+	u8 stuff[SECTOR_SIZE * 2];
+	for (u32 i = 0; i < SECTOR_SIZE * 2; i++)
 	{
 		stuff[i] = 'A';
 	}
-	if (!request_disk_read(0, 1, (u32) &stuff[0]))
+	if (!request_disk_write(0, 2, (u32) &stuff[0]))
 	{
 		putnum(0,0,1,WHITE_TEXT);
 		asm("cli");
