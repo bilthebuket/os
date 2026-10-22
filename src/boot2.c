@@ -10,52 +10,140 @@ __attribute__((used, section(".stage_two_entry")))
 void __attribute__((stdcall)) stage_two(u32 smap_addr, u16 smap_size, u32 stage_two_location, u16 stage_two_sectors)
 {
 	smap* smap = (void*) smap_addr;
-
 	u32 end_of_smap = smap_addr + smap_size * sizeof(smap);
-	u32 idt_address = 0;
+	u32 kernel_info_physical_location = 0;
+	u8 found = 0;
+
 	for (u16 i = 0; i < smap_size; i++)
 	{
-		if (smap[i].type == MEM_AVAILABLE)
+		if (smap[i].type != MEM_AVAILABLE)
 		{
-			u32 address = smap[i].addr_low;
-			u32 size = smap[i].length_low;
+			continue;
+		}
+		if (smap[i].addr_high != 0)
+		{
+			continue;
+		}
+		if (smap[i].length_high != 0)
+		{
+			smap[i].length_low = 0xFFFFFFFF - smap[i].addr_low;
+		}
 
-			// moving idt location past everything else we have in memory so far
-			// (boot2 binary, the stack, boot1 binary, smap)
-			if (address < end_of_smap)
+		u32 address = smap[i].addr_low;
+		u32 length = smap[i].length_low;
+		if (length < FRAME_SIZE)
+		{
+			continue;
+		}
+		if (address < end_of_smap)
+		{
+			u32 adjustment = end_of_smap - address;
+			if (adjustment > length)
 			{
-				u32 diff = end_of_smap - address;
-				if (size < diff)
+				continue;
+			}
+			address += adjustment;
+			length -= adjustment;
+		}
+
+		if (stage_two_sectors * SECTOR_SIZE > FRAME_SIZE)
+		{
+			u32 stage_two_end = stage_two_location + stage_two_sectors * SECTOR_SIZE - 1;
+			if ((stage_two_location >= address && stage_two_location < address + length) || (stage_two_end >= address && stage_two_end < address + length))
+			{
+				u32 adjustment = address - stage_two_end + 1;
+				if (adjustment > length)
 				{
 					continue;
 				}
-
-				address += diff;
-				size -= diff;
+				address += adjustment;
+				length -= adjustment;
 			}
-
-			if (size >= IDT_SIZE)
+		}
+		else
+		{
+			u32 stage_two_end = stage_two_location + stage_two_sectors * SECTOR_SIZE - 1;
+			u32 frame_end = address + length - 1;
+			if ((address >= stage_two_location && address <= stage_two_end) || (frame_end >= stage_two_location && frame_end <= stage_two_end))
 			{
-				idt_address = address;
-				break;
+				u32 adjustment = address - stage_two_end + 1;
+				if (adjustment > length)
+				{
+					continue;
+				}
+				address += adjustment;
+				length -= adjustment;
 			}
+		}
+
+		if (address % FRAME_SIZE != 0)
+		{
+			u32 adjustment = FRAME_SIZE - (address % FRAME_SIZE);
+			address += adjustment;
+			length -= adjustment;
+			if (length < FRAME_SIZE)
+			{
+				continue;
+			}
+		}
+
+		kernel_info_physical_location = address;
+		found = 1;
+		break;
+	}
+
+	if (!found)
+	{
+		asm("hlt");
+	}
+
+	u16 frame_index = 0;
+	u8* availability_table = (void*) kernel_info_physical_location + FRAME_AVAILABILITY_TABLE_ADDRESS;
+	for (u16 i = 0; i < smap_size; i++)
+	{
+		if (smap[i].addr_high != 0)
+		{
+			continue;
+		}
+		u16 num_frames = 0;
+		u32 trimmed_length = smap[i].length_low;
+		if (smap[i].addr_low % FRAME_SIZE != 0)
+		{
+			trimmed_length -= FRAME_SIZE - (smap[i].addr_low % FRAME_SIZE);
+			num_frames++;
+		}
+		if ((smap[i].addr_low + smap[i].length_low) % FRAME_SIZE != 0)
+		{
+			trimmed_length -= (smap[i].addr_low + smap[i].length_low) % FRAME_SIZE;
+			num_frames++;
+		}
+
+		if (smap[i].type == MEM_AVAILABLE)
+		{
+			u16 num_frames = smap[i].length_low / FRAME_SIZE;
+			for (u16 j = 0; j < num_frames; j++)
+			{
+				u16 this_index = frame_index + j;
+				u8 bitmap = availability_table[this_index / 8];
+				bitmap |= 1 << (this_index % 8);
+			}
+			frame_index += num_frames;
+		}
+		else
+		{
+			u16 num_frames += trimmed_length / FRAME_SIZE;
+			for (u16 j = 0; j < num_frames; j++)
+			{
+				u16 this_index = frame_index + j;
+				u8 bitmap = availability_table[this_index / 8];
+				bitmap &= ~(1 << (this_index % 8));
+			}
+			frame_index += num_frames;
 		}
 	}
 	
 	disk_init();
-	setup_interrupts(idt_address, stage_two_location);
-	u8 stuff[SECTOR_SIZE * 2];
-	for (u32 i = 0; i < SECTOR_SIZE * 2; i++)
-	{
-		stuff[i] = 'A';
-	}
-	if (!request_disk_write(0, 2, (u32) &stuff[0]))
-	{
-		putnum(0,0,1,WHITE_TEXT);
-		asm("cli");
-		asm("hlt");
-	}
-idle:
-	asm("hlt");
-	goto idle;
+	setup_interrupts(IDT_ADDRESS, stage_two_location);
+
+	
 }
