@@ -14,7 +14,7 @@ typedef struct
 	u8 endianness;
 	u8 unused;
 	u16 target_os_info;
-	u8 unused2;
+	u8 unused2[7];
 	u16 object_file_type;
 	u16 instruction_set_architecture;
 	u32 unused3;
@@ -22,5 +22,26 @@ typedef struct
 	u32 program_header_table;
 	u32 section_header_table;
 	u32 flags;
+	u16 pht_entry_size;
+	u16 pht_num_entries;
+	u16 sht_entry_size;
+	u16 sht_num_entries;
+	u16 sht_section_name_entry;
+} ELFHeader;
+
+typedef struct
+{
+	u32 type;
+	u32 offset;
+	u32 virtual_address;
+	u32 physical_address;
+	u32 file_size;
+	u32 memory_size;
+	u32 flags;
+	u32 alignment;
+} ELFProgramHeader
+
+_Static_assert(sizeof(ELFHeader) == 52, "elf header struct has been padded");
+_Static_assert(sizeof(ELFProgramHeader) == 32, "elf program header struct has been padded");
 
 #endif
