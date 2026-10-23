@@ -3,11 +3,12 @@
 #include "text.h"
 #include "interrupts.h"
 #include "disk.h"
+#include "paging.h"
 
 // __attribute((stddcall)) makes it so args come off the stack
 // this function should never return, the return address is garbage
 __attribute__((used, section(".stage_two_entry")))
-void __attribute__((stdcall)) stage_two(u32 smap_addr, u16 smap_size, u32 stage_two_location, u16 stage_two_sectors)
+void __attribute__((stdcall)) stage_two(u32 smap_addr, u16 smap_size, u32 stage_two_location, u16 stage_two_sectors, u32 gdt_location)
 {
 	smap* smap = (void*) smap_addr;
 	u32 end_of_smap = smap_addr + smap_size * sizeof(smap);
@@ -131,7 +132,7 @@ void __attribute__((stdcall)) stage_two(u32 smap_addr, u16 smap_size, u32 stage_
 		}
 		else
 		{
-			u16 num_frames += trimmed_length / FRAME_SIZE;
+			num_frames += trimmed_length / FRAME_SIZE;
 			for (u16 j = 0; j < num_frames; j++)
 			{
 				u16 this_index = frame_index + j;
@@ -141,9 +142,36 @@ void __attribute__((stdcall)) stage_two(u32 smap_addr, u16 smap_size, u32 stage_
 			frame_index += num_frames;
 		}
 	}
-	
+
+	u8* new_gdt = (void*) kernel_info_physical_location + GDT_ADDRESS;
+	u8* old_gdt = (void*) gdt_location;
+	for (u16 i = 0; i < GDT_SIZE; i++)
+	{
+		new_gdt[i] = old_gdt[i];
+	}
+
+	FrameTableEntry* frame_table = (void*) kernel_info_physical_location + FT_ADDRESS;
+	for (u16 i = 0; i < FT_NUM_ENTRIES; i++)
+	{
+		u8 bitmap = availability_table[i / 8];
+		if (bitmap & (1 << (i % 8)))
+		{
+			frame_table[i].pid = FRAME_AVAILABLE;
+		}
+		else
+		{
+			frame_table[i].pid = FRAME_RESERVED;
+		}
+	}
+
+	frame_table[kernel_info_physical_location / FRAME_SIZE].pid = ROOT_PROCESS;
+	frame_table[kernel_info_physical_location / FRAME_SIZE].pde = ROOT_PAGE_TABLE_ENTRY; // every page table must map virtual 0x0 - 0x400000 to the kernel info frame
+
+	PageDirectoryEntry* root_pt = (void*) kernel_info_physical_location + ROOT_PT_ADDRESS;
+	pde_init(&root_pt[ROOT_PAGE_TABLE_ENTRY], kernel_info_physical_location);
+
 	disk_init();
-	setup_interrupts(IDT_ADDRESS, stage_two_location);
+	setup_interrupts(kernel_info_physical_location + IDT_ADDRESS, stage_two_location);
 
 	
 }

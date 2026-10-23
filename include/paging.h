@@ -1,6 +1,8 @@
 #ifndef PAGING_H
 #define PAGING_H
 
+#include "def.h"
+
 #define PAGE_PRESENT 1
 #define PAGE_READ_WRITE (1 << 1)
 #define PAGE_USER_SUPERVISOR (1 << 2)
@@ -18,6 +20,11 @@
 
 #define FRAME_SIZE 0x400000
 
+#define FRAME_AVAILABLE -1
+#define FRAME_RESERVED -2
+
+#define ROOT_PAGE_TABLE_ENTRY 0
+
 typedef struct
 {
 	u16 metadata;
@@ -27,7 +34,7 @@ typedef struct
 
 typedef struct
 {
-	u16 pid;
+	s16 pid;
 	u16 pde_index;
 } FrameTableEntry;
 

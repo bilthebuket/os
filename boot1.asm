@@ -127,6 +127,7 @@ exit_find_avail_memory:
 	jc error
 
 	; gcc expects all args to be padded to 4 bytes each
+	push long gdt
 	push word 0x0 ; padding
 	push word [stage2_sectors]
 	push long [stage2_location]

@@ -3,6 +3,7 @@
 
 #include <assert.h>
 #include "interrupts.h"
+#include "paging.h"
 
 #define MEM_AVAILABLE 1
 
@@ -13,7 +14,10 @@
 #define GDT_SIZE 24
 #define IDT_ADDRESS (GDT_ADDRESS + GDT_SIZE)
 #define FT_ADDRESS (IDT_ADDRESS + IDT_SIZE)
-#define FT_SIZE (sizeof(FrameTableEntry) * 1024)
+#define FT_NUM_ENTRIES 1024
+#define FT_SIZE (sizeof(FrameTableEntry) * FT_NUM_ENTRIES)
+#define ROOT_PT_ADDRESS (FT_ADDRESS + FT_SIZE)
+#define ROOT_PT_SIZE (sizeof(PageDirectoryEntry) * PAGING_TABLE_NUM_ENTRIES)
 
 typedef struct
 {
