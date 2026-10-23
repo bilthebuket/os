@@ -6,7 +6,7 @@ done
 nasm -f elf32 interrupts.asm -o interrupts_asm.o
 nasm -f elf32 disk.asm -o disk_asm.o
 
-ld -m elf_i386 -T boot2.ld boot2.o text.o interrupts.o interrupts_asm.o disk_asm.o -o boot2.elf
+ld -m elf_i386 -T boot2.ld boot2.o text.o interrupts.o interrupts_asm.o disk_asm.o paging.o -o boot2.elf
 objcopy -O binary boot2.elf boot2.bin
 truncate -s 4096 boot2.bin
 cat boot1.bin boot2.bin > os.img

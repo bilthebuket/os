@@ -4,6 +4,7 @@
 #include "interrupts.h"
 #include "disk.h"
 #include "paging.h"
+#include "process.h"
 
 // __attribute((stddcall)) makes it so args come off the stack
 // this function should never return, the return address is garbage
@@ -165,13 +166,11 @@ void __attribute__((stdcall)) stage_two(u32 smap_addr, u16 smap_size, u32 stage_
 	}
 
 	frame_table[kernel_info_physical_location / FRAME_SIZE].pid = ROOT_PROCESS;
-	frame_table[kernel_info_physical_location / FRAME_SIZE].pde = ROOT_PAGE_TABLE_ENTRY; // every page table must map virtual 0x0 - 0x400000 to the kernel info frame
+	frame_table[kernel_info_physical_location / FRAME_SIZE].pde_index = ROOT_PAGE_TABLE_ENTRY; // every page table must map virtual 0x0 - 0x400000 to the kernel info frame
 
 	PageDirectoryEntry* root_pt = (void*) kernel_info_physical_location + ROOT_PT_ADDRESS;
 	pde_init(&root_pt[ROOT_PAGE_TABLE_ENTRY], kernel_info_physical_location);
 
 	disk_init();
 	setup_interrupts(kernel_info_physical_location + IDT_ADDRESS, stage_two_location);
-
-	
 }
