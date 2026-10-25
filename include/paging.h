@@ -42,5 +42,13 @@ _Static_assert(sizeof(PageDirectoryEntry) == 8, "pde struct has been padded");
 _Static_assert(sizeof(FrameTableEntry) == 4, "fte struct has been padded");
 
 void pde_init(PageDirectoryEntry* pde, u16 address);
+// returns physical address
+u32 map_virtual_to_physical
+(
+	PageDirectoryEntry* page_table,
+	FrameTableEntry* frame_table,
+	u32 virtual_address,
+	u32 size
+);
 
 #endif

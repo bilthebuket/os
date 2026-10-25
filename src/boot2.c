@@ -185,10 +185,68 @@ void __attribute__((stdcall)) stage_two(u32 smap_addr, u16 smap_size, u32 stage_
 	u32 size;
 	if (!elf_read_header(header, &size))
 	{
-		putnum(0,0,1,WHITE_TEXT);
+		putnum(0,0,2,WHITE_TEXT);
 		asm("hlt");
 	}
 
+	u32 pht_buf_size = SECTOR_SIZE;
+	if (SECTOR_SIZE - sizeof(ELFHeader) < header->pht_num_entries * sizeof(ELFProgramHeader))
+	{
+		pht_buf_size = sizeof(ELFHeader) + header->pht_num_entries * sizeof(ELFProgramHeader);
+		if (pht_buf_size % SECTOR_SIZE != 0)
+		{
+			pht_buf_size += SECTOR_SIZE - pht_buf_size % SECTOR_SIZE;
+		}
+	}
+	u8 pht[pht_buf_size];
+	for (u16 i = 0; i < SECTOR_SIZE; i++)
+	{
+		pht[i] = buf[i];
+	}
+	if (pht_buf_size > SECTOR_SIZE)
+	{
+		if (!disk_read_poll(stage_two_sectors + 2, pht_buf_size / SECTOR_SIZE - 1, &pht[SECTOR_SIZE]))
+		{
+			putnum(0,0,3,WHITE_TEXT);
+			asm("hlt");
+		}
+	}
+
+	for (u32 i = 0; i < pht_buf_size; i++)
+	{
+		u32 physical_address = map_virtual_to_physical
+			(
+				root_pt,
+				frame_table,
+				pht[i].virtual_address,
+				pht[i].memory_size
+			);
+		u32 disk_address_bytes = (stage_two_sectors + 1) * SECTOR_SIZE + sizeof(ELFProgramHeader) + sizeof(ELFProgramHeader) * header->pht_num_entries + pht[i].offset;
+		u32 disk_end_address_bytes = disk_address_bytes + pht[i].file_size;
+		if (disk_end_address_bytes % SECTOR_SIZE != 0)
+		{
+			disk_end_address_bytes += SECTOR_SIZE - (disk_end_address_bytes % SECTOR_SIZE);
+		}
+
+		u32 start_offset = disk_address_bytes % SECTOR_SIZE;
+		disk_address_bytes -= start_offset;
+		u32 disk_address_sector = disk_address_byte / SECTOR_SIZE;
+		u32 num_sectors = disk_end_address_bytes / SECTOR_SIZE - disk_address_sector;
+		u8 segment_buf[num_sectors * SECTOR_SIZE];
+		if (!disk_read_poll(disk_address_sector, num_sectors, &segment_buf[0]))
+		{
+			putnum(0,0,4,WHITE_TEXT);
+			asm("hlt");
+		}
+
+		u8* ptr = (void*) physical_address;
+		for (u32 i = 0; i < pht[i].file_size; i++)
+		{
+			ptr[i] = segment_buf[i + start_offset];
+		}
+	}
+
+	
 
 	setup_interrupts(kernel_info_physical_location + IDT_ADDRESS, stage_two_location);
 }
