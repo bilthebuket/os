@@ -11,6 +11,7 @@ global request_disk_write
 global request_disk_read
 global disk_init
 global ata_enable_interrupts
+global disk_read_poll
 
 error:
 	and eax, 0x000000FF
@@ -40,6 +41,7 @@ disk_read:
 	mov [ebx + disk_request_info + 0x4], eax
 	mov edx, 0x1F0
 	mov ecx, 0x100
+	cld
 	mov edi, [ebx + disk_request_info]
 	rep insw
 	mov [ebx + disk_request_info], edi
@@ -56,6 +58,7 @@ disk_write:
 	mov edx, 0x1F0
 	mov ecx, 0x0
 	mov esi, [ebx + disk_request_info]
+	cld
 	; using loop instead rep outsw because we need a delay in between writes to 0x1f0
 write_loop:
 	mov word ax, [esi]
@@ -76,7 +79,7 @@ request_disk_read:
 	call request_disk_generic
 
 	mov eax, 1
-	ret 8
+	ret 0xC
 
 request_disk_write:
 	mov ebx, [STAGE2_LOCATION]
@@ -92,7 +95,34 @@ request_disk_write:
 	jz error
 	call disk_write
 	mov eax, 1
-	ret 8
+	ret 0xC
+
+disk_read_poll:
+	mov cl, 0x20
+	call request_disk_generic
+	cld
+	mov edi, [esp + 0xC]
+
+poll_read_loop:
+	call wait_for_busy_disk
+
+	mov edx, 0x1F7
+	in al, dx
+	test dx, 0x8
+	mov eax, 0
+	jz poll_read_end
+
+	mov ecx, [esp + 0x8]
+	test ecx, ecx
+	mov eax, 1
+	jz poll_read_end
+
+	mov ecx, 0x100
+	mov edx, 0x1F0
+	rep insw
+
+poll_read_end:
+	ret 0xC
 
 request_disk_generic:
 	push ecx

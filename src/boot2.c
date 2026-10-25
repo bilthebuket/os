@@ -5,6 +5,7 @@
 #include "disk.h"
 #include "paging.h"
 #include "process.h"
+#include "elf.h"
 
 // __attribute((stddcall)) makes it so args come off the stack
 // this function should never return, the return address is garbage
@@ -172,5 +173,22 @@ void __attribute__((stdcall)) stage_two(u32 smap_addr, u16 smap_size, u32 stage_
 	pde_init(&root_pt[ROOT_PAGE_TABLE_ENTRY], kernel_info_physical_location);
 
 	disk_init();
+
+	u8 buf[SECTOR_SIZE];
+	if (!disk_read_poll(stage_two_sectors + 1, 1, &buf[0]))
+	{
+		putnum(0,0,1,WHITE_TEXT);
+		asm("hlt");
+	}
+
+	ELFHeader* header = (ELFHeader*) &buf[0];
+	u32 size;
+	if (!elf_read_header(header, &size))
+	{
+		putnum(0,0,1,WHITE_TEXT);
+		asm("hlt");
+	}
+
+
 	setup_interrupts(kernel_info_physical_location + IDT_ADDRESS, stage_two_location);
 }

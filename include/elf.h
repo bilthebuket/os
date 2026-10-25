@@ -44,4 +44,7 @@ typedef struct
 _Static_assert(sizeof(ELFHeader) == 52, "elf header struct has been padded");
 _Static_assert(sizeof(ELFProgramHeader) == 32, "elf program header struct has been padded");
 
+// makes sure its valid, places total size of file in size
+u32 elf_read_header(ELFHeader* file, u32* size);
+
 #endif
