@@ -170,7 +170,7 @@ void __attribute__((stdcall)) stage_two(u32 smap_addr, u16 smap_size, u32 stage_
 	frame_table[kernel_info_physical_location / FRAME_SIZE].pde_index = ROOT_PAGE_TABLE_ENTRY; // every page table must map virtual 0x0 - 0x400000 to the kernel info frame
 
 	PageDirectoryEntry* root_pt = (void*) kernel_info_physical_location + ROOT_PT_ADDRESS;
-	pde_init(&root_pt[ROOT_PAGE_TABLE_ENTRY], kernel_info_physical_location);
+	pde_init(&root_pt[ROOT_PAGE_TABLE_ENTRY], kernel_info_physical_location / FRAME_SIZE);
 
 	disk_init();
 
@@ -244,9 +244,30 @@ void __attribute__((stdcall)) stage_two(u32 smap_addr, u16 smap_size, u32 stage_
 		{
 			ptr[i] = segment_buf[i + start_offset];
 		}
+
+		frame_table[physical_address / FRAME_SIZE].pid = ROOT_PROCESS;
+		frame_table[physical_address / FRAME_SIZE].pde_index = ROOT_PAGE_TABLE_ENTRY;
 	}
 
+	u32 stack_frame = 0;
+	u8 found = 0;
+	for (u32 i = 0; i < FT_NUM_ENTRIES; i++)
+	{
+		if (frame_table[i].pid = FRAME_AVAILABLE)
+		{
+			stack_frame = i;
+			found = 1
+			break;
+		}
+	}
 	
+	if (!found)
+	{
+		putnum(0,0,5,WHITE_TEXT);
+		asm("hlt");
+	}
 
-	setup_interrupts(kernel_info_physical_location + IDT_ADDRESS, stage_two_location);
+	frame_table[stack_frame].pid = ROOT_PROCESS;
+
+	enable_paging_jump_to_kernel_main(stack_);
 }

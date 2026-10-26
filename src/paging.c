@@ -39,7 +39,7 @@ u32 map_virtual_to_physical
 			// todo: handle frame replacement
 		}
 
-		pde_init(&page_table[virtual_address / FRAME_SIZE + i], frame_table_index * FRAME_SIZE);
+		pde_init(&page_table[virtual_address / FRAME_SIZE + i], frame_table_index);
 	}
 
 	return frame_table_index * FRAME_SIZE;

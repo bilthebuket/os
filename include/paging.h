@@ -41,6 +41,7 @@ typedef struct
 _Static_assert(sizeof(PageDirectoryEntry) == 8, "pde struct has been padded");
 _Static_assert(sizeof(FrameTableEntry) == 4, "fte struct has been padded");
 
+// address is the (physical address of the start of the frame) >> 22, so really its just the index in the frame table
 void pde_init(PageDirectoryEntry* pde, u16 address);
 // returns physical address
 u32 map_virtual_to_physical
@@ -50,5 +51,7 @@ u32 map_virtual_to_physical
 	u32 virtual_address,
 	u32 size
 );
+
+extern __attribute__((stdcall)) void enable_paging_jump_to_kernel_main(void);
 
 #endif
