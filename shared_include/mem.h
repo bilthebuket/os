@@ -2,7 +2,6 @@
 #define MEM_H
 
 #include <assert.h>
-#include "interrupts.h"
 #include "paging.h"
 
 #define MEM_AVAILABLE 1
@@ -12,6 +11,7 @@
 #define FRAME_AVAILABILITY_TABLE_SIZE 128
 #define GDT_ADDRESS (FRAME_AVAILABILITY_TABLE_ADDRESS + FRAME_AVAILABILITY_TABLE_SIZE)
 #define GDT_SIZE 24
+#define IDT_SIZE 2048
 #define IDT_ADDRESS (GDT_ADDRESS + GDT_SIZE)
 #define FT_ADDRESS (IDT_ADDRESS + IDT_SIZE)
 #define FT_NUM_ENTRIES 1024

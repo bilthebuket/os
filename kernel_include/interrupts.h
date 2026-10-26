@@ -2,8 +2,7 @@
 #define INTERRUPTS_H
 
 #include "def.h"
-
-#define IDT_SIZE 2048
+#include "mem.h"
 
 typedef struct
 {

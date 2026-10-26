@@ -1,5 +1,5 @@
 bits 32
-%include "constants.asm"
+%include "shared_src/constants.asm"
 
 section .text:
 

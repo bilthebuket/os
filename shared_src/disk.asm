@@ -1,11 +1,11 @@
 bits 32
-%include "constants.asm"
+%include "shared_src/constants.asm"
 
 section .text:
 
 extern puts
 extern putnum
-extern prep_disk_isr
+;extern prep_disk_isr
 
 global request_disk_write
 global request_disk_read
@@ -74,7 +74,7 @@ request_disk_read:
 	mov ebx, [STAGE2_LOCATION]
 	add ebx, disk_read
 	push ebx
-	call prep_disk_isr
+	;call prep_disk_isr
 	mov cl, 0x20 ; read with retry
 	call request_disk_generic
 
@@ -85,7 +85,7 @@ request_disk_write:
 	mov ebx, [STAGE2_LOCATION]
 	add ebx, disk_write
 	push ebx
-	call prep_disk_isr
+	;call prep_disk_isr
 	mov cl, 0x30 ; write with retry
 	call request_disk_generic
 
@@ -109,7 +109,7 @@ poll_read_loop:
 
 	mov edx, 0x1F7
 	in al, dx
-	test dx, 0x8
+	test al, 0x8
 	mov eax, 0
 	jz poll_read_end
 

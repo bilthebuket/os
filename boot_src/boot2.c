@@ -1,7 +1,6 @@
 #include "def.h"
 #include "mem.h"
 #include "text.h"
-#include "interrupts.h"
 #include "disk.h"
 #include "paging.h"
 #include "process.h"

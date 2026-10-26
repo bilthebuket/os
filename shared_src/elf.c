@@ -1,4 +1,5 @@
 #include "elf.h"
+#include "text.h"
 
 u32 elf_read_header(ELFHeader* file, u32* size)
 {
@@ -9,6 +10,9 @@ u32 elf_read_header(ELFHeader* file, u32* size)
 		file->endianness != ELF_LITTLE_ENDIAN
 	)
 	{
+		putnum(0,0,file->signature,WHITE_TEXT);
+		putnum(1,0,ELF_SIGNATURE,WHITE_TEXT);
+		asm("hlt");
 		return 0;
 	}
 
