@@ -20,3 +20,6 @@ rm text.o
 rm interrupts.o
 rm interrupts_asm.o
 rm disk_asm.o
+rm elf.o
+rm paging.o
+rm transition.bin
