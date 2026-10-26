@@ -7,7 +7,7 @@
 #define ELF_32BIT 1
 #define ELF_LITTLE_ENDIAN 1
 
-typedef struct
+typedef struct __attribute__((packed))
 {
 	u32 signature;
 	u8 is32or64;
@@ -22,6 +22,7 @@ typedef struct
 	u32 program_header_table;
 	u32 section_header_table;
 	u32 flags;
+	u16 header_size;
 	u16 pht_entry_size;
 	u16 pht_num_entries;
 	u16 sht_entry_size;
@@ -39,7 +40,7 @@ typedef struct
 	u32 memory_size;
 	u32 flags;
 	u32 alignment;
-} ELFProgramHeader
+} ELFProgramHeader;
 
 _Static_assert(sizeof(ELFHeader) == 52, "elf header struct has been padded");
 _Static_assert(sizeof(ELFProgramHeader) == 32, "elf program header struct has been padded");

@@ -25,6 +25,9 @@
 
 #define ROOT_PAGE_TABLE_ENTRY 0
 
+#define PDE_UNINITIALIZED 1
+#define PDE_INITIALIZED 0
+
 typedef struct
 {
 	u16 metadata;
@@ -51,7 +54,5 @@ u32 map_virtual_to_physical
 	u32 virtual_address,
 	u32 size
 );
-
-extern __attribute__((stdcall)) void enable_paging_jump_to_kernel_main(void);
 
 #endif

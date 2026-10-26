@@ -102,7 +102,7 @@ disk_read_poll:
 	call request_disk_generic
 	cld
 	mov edi, [esp + 0xC]
-	mov edp, [esp + 0x8]
+	mov ebp, [esp + 0x8]
 
 poll_read_loop:
 	call wait_for_busy_disk
@@ -113,11 +113,11 @@ poll_read_loop:
 	mov eax, 0
 	jz poll_read_end
 
-	test edp, edp
+	test ebp, ebp
 	mov eax, 1
 	jz poll_read_end
 
-	sub edp, 1
+	sub ebp, 1
 
 	mov ecx, 0x100
 	mov edx, 0x1F0

@@ -1,6 +1,6 @@
 #include "elf.h"
 
-u32 elf_read_header(ELFHeader* file, u32* size);
+u32 elf_read_header(ELFHeader* file, u32* size)
 {
 	if
 	(
@@ -13,6 +13,7 @@ u32 elf_read_header(ELFHeader* file, u32* size);
 	}
 
 	u32 r = file->section_header_table;
-	r -= sizeof(ELFHeader) + sizeof(ELFProgramHeader) * file->pht_num_entries;
-	return r;
+	r += file->sht_num_entries * file->sht_entry_size;
+	*size = r;
+	return 1;
 }
