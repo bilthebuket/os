@@ -2,14 +2,16 @@
 #define ELF_H
 
 #include "def.h"
-
-#define ELF_SIGNATURE 0x7F454C46
+#define ELF_SIGNATURE0 0x7F
+#define ELF_SIGNATURE1 0x45
+#define ELF_SIGNATURE2 0x4C
+#define ELF_SIGNATURE3 0x46
 #define ELF_32BIT 1
 #define ELF_LITTLE_ENDIAN 1
 
 typedef struct __attribute__((packed))
 {
-	u32 signature;
+	u8 signature[4];
 	u8 is32or64;
 	u8 endianness;
 	u8 unused;
