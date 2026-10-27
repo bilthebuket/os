@@ -139,6 +139,14 @@ exit_find_avail_memory:
 	mov eax, [stage2_location]
 	mov [0x7BFC], eax
 
+	; mask pic
+	mov dx, 0x21
+	mov al, 0xFF
+	out dx, al
+	mov dx, 0xA1
+	mov al, 0xFF
+	out dx, al
+
 	cli
 	lgdt [gdtr]
 	mov eax, cr0

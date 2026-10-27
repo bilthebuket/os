@@ -111,6 +111,11 @@ poll_read_loop:
 	mov edx, 0x1F7
 	in al, dx
 	test al, 0x8
+	push long 0xf
+	push eax
+	push long 0x0
+	push long 0x1
+	call putnum
 	mov eax, 0
 	jz poll_read_end
 
