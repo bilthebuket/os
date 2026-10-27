@@ -217,7 +217,7 @@ void __attribute__((stdcall)) stage_two(u32 smap_addr, u16 smap_size, u32 stage_
 
 	ELFProgramHeader* pht = (void*) &pht_buf[sizeof(ELFHeader)];
 
-	for (u32 i = 0; i < pht_buf_size; i++)
+	for (u32 i = 0; i < header->pht_num_entries; i++)
 	{
 		u32 physical_address = map_virtual_to_physical
 			(

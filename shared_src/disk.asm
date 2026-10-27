@@ -29,6 +29,7 @@ error:
 	push long 0x0
 	push long 0x1
 	call putnum
+	pop eax ; pop the request return address off the stack so we can return directly to the caller of the disk request
 	mov eax, 0
 	ret 0xC
 
@@ -138,15 +139,17 @@ request_disk_generic:
 	test al, 0x40
 	jz error
 
+	push ebp
+
 	mov ebx, [STAGE2_LOCATION]
 
-	mov eax, [esp + 0x10]
+	mov eax, [esp + 0x14]
 	mov [ebx + disk_request_info], eax
-	mov eax, [esp + 0xC]
-	mov [ebx + disk_request_info + 0x4], eax
+	mov eax, [esp + 0x10]
+	mov [ebx + disk_request_info + 0x8], eax
 
 	mov byte bl, [drive_bitmask + ebx]
-	mov ebp, [esp + 0x8]
+	mov ebp, [esp + 0xC]
 	mov eax, ebp
 	mov edx, 0x01F6 ; send drive and bits 24-27 of lba
 	shr eax, 24
@@ -154,7 +157,7 @@ request_disk_generic:
 	out dx, al
 
 	mov edx, 0x01F2 ; send number of sectors
-	mov eax, [esp + 0xC]
+	mov eax, [esp + 0x10]
 	out dx, al
 
 	mov edx, 0x1F3 ; send bits 0-7 of lba
@@ -174,6 +177,8 @@ request_disk_generic:
 	mov edx, 0x1F7 ; send command
 	mov al, cl
 	out dx, al
+
+	pop ebp
 
 	call disk_wait_alternate
 

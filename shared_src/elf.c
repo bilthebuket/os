@@ -13,11 +13,6 @@ u32 elf_read_header(ELFHeader* file, u32* size)
 		file->endianness != ELF_LITTLE_ENDIAN
 	)
 	{
-		putnum(0,0,file->signature[0],WHITE_TEXT);
-		putnum(1,0,file->signature[1],WHITE_TEXT);
-		putnum(2,0,file->signature[2],WHITE_TEXT);
-		putnum(3,0,file->signature[3],WHITE_TEXT);
-		asm("hlt");
 		return 0;
 	}
 
