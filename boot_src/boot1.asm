@@ -130,10 +130,10 @@ exit_find_avail_memory:
 	jz error
 
 	; read stage 2 into memory
-	mov eax, [esp + 0x8]
+	mov eax, [esp + 0xC]
 	shr eax, 0x4
 	mov [dap + 0x6], ax
-	mov eax, [esp + 0x8]
+	mov eax, [esp + 0xC]
 	and eax, 0x0F
 	mov [dap + 0x4], ax
 	mov ax, dap ; we know dap is somewhere around 0x7c00 so it will be less than 0xFFFF
@@ -145,7 +145,7 @@ exit_find_avail_memory:
 	int 0x13
 	jc error
 
-	mov eax, [esp + 0x8]
+	mov eax, [esp + 0xC]
 	mov [0x7BFC], eax
 
 	; mask pic
@@ -172,7 +172,7 @@ bits 32
 	mov gs, ax
 	mov ss, ax
 
-	jmp [esp + 0x8]
+	jmp [esp + 0xC]
 bits 16
 
 error:

@@ -5,12 +5,15 @@
 #include "paging.h"
 #include "process.h"
 #include "elf.h"
+#include "debug.h"
 
 // __attribute((stddcall)) makes it so args come off the stack
 // this function should never return, the return address is garbage
 __attribute__((used, section(".stage_two_entry")))
 void __attribute__((stdcall)) stage_two(u32 smap_addr, u16 smap_size, u32 stage_two_location, u16 stage_two_sectors, u32 gdt_location)
 {
+	putnum(0, MAX_DIGITS, 0, WHITE_TEXT);
+
 	smap* smap = (void*) smap_addr;
 	u32 end_of_smap = smap_addr + smap_size * sizeof(smap);
 	u32 kernel_info_physical_location = 0;
@@ -99,6 +102,8 @@ void __attribute__((stdcall)) stage_two(u32 smap_addr, u16 smap_size, u32 stage_
 		asm("hlt");
 	}
 
+	putnum(1, MAX_DIGITS, 1, WHITE_TEXT);
+
 	u16 frame_index = 0;
 	u8* availability_table = (void*) kernel_info_physical_location + FRAME_AVAILABILITY_TABLE_ADDRESS;
 	for (u16 i = 0; i < smap_size; i++)
@@ -175,6 +180,8 @@ void __attribute__((stdcall)) stage_two(u32 smap_addr, u16 smap_size, u32 stage_
 
 	disk_init();
 
+	putnum(2, MAX_DIGITS, 2, WHITE_TEXT);
+
 	u8 buf[SECTOR_SIZE];
 	if (!disk_read_poll(stage_two_sectors + 1, 1, (u32) &buf[0]))
 	{
@@ -212,6 +219,8 @@ void __attribute__((stdcall)) stage_two(u32 smap_addr, u16 smap_size, u32 stage_
 			asm("hlt");
 		}
 	}
+
+	putnum(3, MAX_DIGITS, 3, WHITE_TEXT);
 
 	ELFProgramHeader* pht = (void*) &pht_buf[sizeof(ELFHeader)];
 
@@ -251,6 +260,8 @@ void __attribute__((stdcall)) stage_two(u32 smap_addr, u16 smap_size, u32 stage_
 		frame_table[physical_address / FRAME_SIZE].pid = ROOT_PROCESS;
 		frame_table[physical_address / FRAME_SIZE].pde_index = ROOT_PAGE_TABLE_ENTRY;
 	}
+
+	putnum(4, MAX_DIGITS, 4, WHITE_TEXT);
 
 	u32 stack_frame = 0;
 	found = 0;
