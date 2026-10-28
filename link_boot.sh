@@ -31,7 +31,7 @@ truncate -s 512 transition.bin
 cat boot1.bin boot2.bin main.elf transition.bin > os.img
 rm boot1.bin
 rm boot2.bin
-rm boot2.elf
+#rm boot2.elf
 rm boot2.o
 rm text.o
 rm interrupts.o

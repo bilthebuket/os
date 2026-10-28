@@ -126,8 +126,7 @@ void __attribute__((stdcall)) stage_two(u32 smap_addr, u16 smap_size, u32 stage_
 			for (u16 j = 0; j < num_frames; j++)
 			{
 				u16 this_index = frame_index + j;
-				u8 bitmap = availability_table[this_index / 8];
-				bitmap |= 1 << (this_index % 8);
+				availability_table[this_index / 8] |= 1 << (this_index % 8);
 			}
 			frame_index += num_frames;
 		}
@@ -137,8 +136,7 @@ void __attribute__((stdcall)) stage_two(u32 smap_addr, u16 smap_size, u32 stage_
 			for (u16 j = 0; j < num_frames; j++)
 			{
 				u16 this_index = frame_index + j;
-				u8 bitmap = availability_table[this_index / 8];
-				bitmap &= ~(1 << (this_index % 8));
+				availability_table[this_index / 8] &= ~(1 << (this_index % 8));
 			}
 			frame_index += num_frames;
 		}
@@ -152,23 +150,18 @@ void __attribute__((stdcall)) stage_two(u32 smap_addr, u16 smap_size, u32 stage_
 	}
 
 	FrameTableEntry* frame_table = (void*) kernel_info_physical_location + FT_ADDRESS;
-	u32 count = 0;
 	for (u16 i = 0; i < FT_NUM_ENTRIES; i++)
 	{
 		u8 bitmap = availability_table[i / 8];
 		if (bitmap & (1 << (i % 8)))
 		{
 			frame_table[i].pid = FRAME_AVAILABLE;
-			count++;
 		}
 		else
 		{
 			frame_table[i].pid = FRAME_RESERVED;
 		}
 	}
-
-	putnum(0,0,count,WHITE_TEXT);
-	asm("hlt");
 
 	frame_table[kernel_info_physical_location / FRAME_SIZE].pid = ROOT_PROCESS;
 	frame_table[kernel_info_physical_location / FRAME_SIZE].pde_index = ROOT_PAGE_TABLE_ENTRY; // every page table must map virtual 0x0 - 0x400000 to the kernel info frame

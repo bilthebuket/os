@@ -10,7 +10,6 @@ _start:
 	sti
 
 	mov ax, [dap + 0x2]
-	mov [stage2_sectors], ax
 	mov [boot_drive], dl
 	mov ah, dl
 
@@ -59,9 +58,12 @@ find_avail_memory:
 	mov es, ax
 	mov di, cx
 	
-	; checking that this chunk is not reserved, is big enough, and the high order 32 bits of the address are zero
+	; checking that this chunk is not reserved, does not include bytes 0x0-0x4FF, is big enough, and the high order 32 bits of the address are zero
 	cmp long [es:di + 0x10], 0x1 
 	jne find_avail_memory
+	cmp long [es:di], 0x500
+	jb avoid_bios_reserved
+reserved_avoided:
 	cmp [es:di + 0x8], ebx
 	jb find_avail_memory
 	mov ebp, [es:di + 0x4]
@@ -78,6 +80,13 @@ find_avail_memory:
 	cmp ebp, smap + 0x280
 	jb fix_collision
 	jmp exit_find_avail_memory
+
+avoid_bios_reserved:
+	mov ebp, 0x500
+	sub ebp, [es:di]
+	add [es:di], ebp
+	sub [es:di + 0x8], ebp
+	jmp reserved_avoided
 
 fix_collision:
 	add ebp, ebx
@@ -96,7 +105,17 @@ fix_collision_two:
 	mov ebp, smap + 0x280
 
 exit_find_avail_memory:
-	mov [stage2_location], ebp
+
+	; setting up stack for jumping to stage 2
+	; gcc expects all args to be padded to 4 bytes each
+	push long gdt
+	push word 0x0 ; padding
+	push word [dap + 0x2]
+	push ebp
+	push word 0x0 ; padding
+	push word [smap_size]
+	push long smap
+	push long 0x0 ; push garbage address because gcc expects stage2 to be entered as a call and not a jmp
 
 	mov dl, [boot_drive]
 	mov ah, 0x41
@@ -111,10 +130,10 @@ exit_find_avail_memory:
 	jz error
 
 	; read stage 2 into memory
-	mov eax, [stage2_location]
+	mov eax, [esp + 0x8]
 	shr eax, 0x4
 	mov [dap + 0x6], ax
-	mov eax, [stage2_location]
+	mov eax, [esp + 0x8]
 	and eax, 0x0F
 	mov [dap + 0x4], ax
 	mov ax, dap ; we know dap is somewhere around 0x7c00 so it will be less than 0xFFFF
@@ -126,17 +145,7 @@ exit_find_avail_memory:
 	int 0x13
 	jc error
 
-	; gcc expects all args to be padded to 4 bytes each
-	push long gdt
-	push word 0x0 ; padding
-	push word [stage2_sectors]
-	push long [stage2_location]
-	push word 0x0 ; padding
-	push word [smap_size]
-	push long smap
-	push long 0x0 ; push garbage address because gcc expects stage2 to be entered as a call and not a jmp
-
-	mov eax, [stage2_location]
+	mov eax, [esp + 0x8]
 	mov [0x7BFC], eax
 
 	; mask pic
@@ -163,8 +172,7 @@ bits 32
 	mov gs, ax
 	mov ss, ax
 
-	mov eax, [stage2_location]
-	jmp eax
+	jmp [esp + 0x8]
 bits 16
 
 error:
@@ -212,12 +220,6 @@ smap_offset:
 	dw 0x0
 
 smap_size:
-	dw 0x0
-
-stage2_location:
-	dd 0x0
-
-stage2_sectors:
 	dw 0x0
 
 smap:
