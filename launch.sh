@@ -14,3 +14,5 @@ qemu-system-i386 \
 #	-d in_asm,exec \
 #	-dfilter 0x0..0x2000 \
 #	-D qemu.log \
+#	-s \
+#	-S \

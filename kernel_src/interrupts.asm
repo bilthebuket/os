@@ -50,7 +50,7 @@ pic_init:
 
 default_isr:
 	pushad
-	mov ebx, [STAGE2_LOCATION]
+;	mov ebx, [STAGE2_LOCATION]
 	add ebx, interrupt_error_string
 	push byte 0x0F
 	push ebx
@@ -61,7 +61,7 @@ default_isr:
 	iret
 
 disk_error:
-	mov ebx, [STAGE2_LOCATION]
+;	mov ebx, [STAGE2_LOCATION]
 	add ebx, disk_interrupt_error_string
 	push long 0x0F
 	push ebx
@@ -111,7 +111,7 @@ disk_isr:
 	test al, 0x08
 	jz slave_isr_end ; do nothing if controller isnt ready for read/write
 
-	mov ebx, [STAGE2_LOCATION]
+;	mov ebx, [STAGE2_LOCATION]
 	mov eax, [disk_func_addr + ebx]
 	cmp eax, 0x0
 	je disk_error
@@ -119,13 +119,13 @@ disk_isr:
 	jmp slave_isr_end
 
 prep_disk_isr:
-	mov ebx, [STAGE2_LOCATION]
+;	mov ebx, [STAGE2_LOCATION]
 	mov eax, [esp + 0x4]
 	mov [ebx + disk_func_addr], eax
 	ret 0x4
 
 call_lidt:
-	mov ebx, [STAGE2_LOCATION]
+;	mov ebx, [STAGE2_LOCATION]
 	mov long eax, [esp + 0x4]
 	mov long [ebx + idt + 0x2], eax
 	lidt [ebx + idt]

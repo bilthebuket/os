@@ -6,7 +6,7 @@ _start:
 	xor ax, ax
 	mov ds, ax
 	mov ss, ax
-	mov sp, 0x7bFc ; we are going to put the location of stage two inbetween the stack and where stage 1 is loaded
+	mov sp, 0x7C00
 	sti
 
 	mov ax, [dap + 0x2]
@@ -144,9 +144,6 @@ exit_find_avail_memory:
 	mov dl, [boot_drive]
 	int 0x13
 	jc error
-
-	mov eax, [esp + 0xC]
-	mov [0x7BFC], eax
 
 	; mask pic
 	mov dx, 0x21

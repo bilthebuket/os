@@ -23,11 +23,10 @@ u32 map_virtual_to_physical
 {
 	// the offset in the physical frame needs to match the offset of the virtual address, 
 	// thus that offset becomes padding that must be included in the size
-	u32 num_pages = size + virtual_address % FRAME_SIZE;
-	if ((size + virtual_address % FRAME_SIZE) % FRAME_SIZE != 0)
-	{
-		num_pages++;
-	}
+	u32 virt_start = virtual_address - (virtual_address % FRAME_SIZE);
+	u32 virt_end = virtual_address + size;
+	virt_end += FRAME_SIZE - (virt_end % FRAME_SIZE);
+	u32 num_pages = (virt_end - virt_start) / FRAME_SIZE;
 
 	u32 frame_table_index = 0;
 	for (u32 i = 0; i < num_pages; i++)

@@ -34,7 +34,7 @@ error:
 	ret 0xC
 
 disk_read:
-	mov ebx, [STAGE2_LOCATION]
+;	mov ebx, [STAGE2_LOCATION]
 	mov eax, [ebx + disk_request_info + 0x4]
 	test eax, eax
 	jz end
@@ -50,7 +50,7 @@ end:
 	ret
 
 disk_write:
-	mov ebx, [STAGE2_LOCATION]
+;	mov ebx, [STAGE2_LOCATION]
 	mov eax, [ebx + disk_request_info + 0x4]
 	test eax, eax
 	jz end
@@ -72,7 +72,7 @@ write_loop:
 	ret
 
 request_disk_read:
-	mov ebx, [STAGE2_LOCATION]
+;	mov ebx, [STAGE2_LOCATION]
 	add ebx, disk_read
 	push ebx
 	;call prep_disk_isr
@@ -83,7 +83,7 @@ request_disk_read:
 	ret 0xC
 
 request_disk_write:
-	mov ebx, [STAGE2_LOCATION]
+;	mov ebx, [STAGE2_LOCATION]
 	add ebx, disk_write
 	push ebx
 	;call prep_disk_isr
@@ -99,6 +99,9 @@ request_disk_write:
 	ret 0xC
 
 disk_read_poll:
+	push ebx
+	push edi
+	add esp, 8
 	mov cl, 0x20
 	call request_disk_generic
 	cld
@@ -125,6 +128,9 @@ poll_read_loop:
 	rep insw
 
 poll_read_end:
+	sub esp, 8
+	pop edi
+	pop ebx
 	ret 0xC
 
 request_disk_generic:
@@ -141,7 +147,7 @@ request_disk_generic:
 
 	push ebp
 
-	mov ebx, [STAGE2_LOCATION]
+;	mov ebx, [STAGE2_LOCATION]
 
 	mov eax, [esp + 0x14]
 	mov [ebx + disk_request_info], eax
@@ -204,7 +210,7 @@ disk_identify:
 	ret
 
 disk_init:
-	mov ebx, [STAGE2_LOCATION]
+;	mov ebx, [STAGE2_LOCATION]
 
 	mov dx, 0x01F6
 	mov al, 0xE0 ; try master drive

@@ -7,10 +7,8 @@
 #include "elf.h"
 #include "debug.h"
 
-// __attribute((stddcall)) makes it so args come off the stack
-// this function should never return, the return address is garbage
 __attribute__((used, section(".stage_two_entry")))
-void __attribute__((stdcall)) stage_two(u32 smap_addr, u16 smap_size, u32 stage_two_location, u16 stage_two_sectors, u32 gdt_location)
+void __attribute__((stdcall)) read_smap_init_ft_move_stack(u32 smap_addr, u16 smap_size, u32 stage_two_location, u16 stage_two_sectors, u32 gdt_location)
 {
 	putnum(0, MAX_DIGITS, 0, WHITE_TEXT);
 
@@ -103,7 +101,6 @@ void __attribute__((stdcall)) stage_two(u32 smap_addr, u16 smap_size, u32 stage_
 	}
 
 	putnum(1, MAX_DIGITS, 1, WHITE_TEXT);
-
 	u16 frame_index = 0;
 	u8* availability_table = (void*) kernel_info_physical_location + FRAME_AVAILABILITY_TABLE_ADDRESS;
 	for (u16 i = 0; i < smap_size; i++)
@@ -178,9 +175,37 @@ void __attribute__((stdcall)) stage_two(u32 smap_addr, u16 smap_size, u32 stage_
 	}
 	pde_init(&root_pt[ROOT_PAGE_TABLE_ENTRY], kernel_info_physical_location / FRAME_SIZE);
 
+	putnum(2, MAX_DIGITS, 2, WHITE_TEXT);
+
 	disk_init();
 
-	putnum(2, MAX_DIGITS, 2, WHITE_TEXT);
+	u32 stack_frame = 0;
+	found = 0;
+	for (u32 i = 0; i < FT_NUM_ENTRIES; i++)
+	{
+		if (frame_table[i].pid == FRAME_AVAILABLE)
+		{
+			stack_frame = i;
+			found = 1;
+			break;
+		}
+	}
+	
+	if (!found || stack_frame == 0)
+	{
+		putnum(0,0,5,WHITE_TEXT);
+		asm("hlt");
+	}
+
+	// this never returns it jumps to stage_two, had to do this because gcc assumes the stack is preserved and not moved
+	move_stack((stack_frame + 1) * FRAME_SIZE, kernel_info_physical_location, gdt_location, stage_two_sectors, stack_frame);
+}
+
+void __attribute__((stdcall)) stage_two(u32 kernel_info_physical_location, u32 gdt_location, u32 stage_two_sectors, u32 stack_frame)
+{
+	PageDirectoryEntry* root_pt = (void*) kernel_info_physical_location + ROOT_PT_ADDRESS;
+	FrameTableEntry* frame_table = (void*) kernel_info_physical_location + FT_ADDRESS;
+	u8* old_gdt = (void*) gdt_location;
 
 	u8 buf[SECTOR_SIZE];
 	if (!disk_read_poll(stage_two_sectors + 1, 1, (u32) &buf[0]))
@@ -234,7 +259,6 @@ void __attribute__((stdcall)) stage_two(u32 smap_addr, u16 smap_size, u32 stage_
 				pht[i].memory_size,
 				ROOT_PROCESS
 			);
-		putnum(i, MAX_DIGITS * 2, i, WHITE_TEXT);
 		u32 disk_address_bytes = (stage_two_sectors + 1) * SECTOR_SIZE + sizeof(ELFProgramHeader) + sizeof(ELFProgramHeader) * header->pht_num_entries + pht[i].offset;
 		u32 disk_end_address_bytes = disk_address_bytes + pht[i].file_size;
 		if (disk_end_address_bytes % SECTOR_SIZE != 0)
@@ -265,26 +289,8 @@ void __attribute__((stdcall)) stage_two(u32 smap_addr, u16 smap_size, u32 stage_
 
 	putnum(4, MAX_DIGITS, 4, WHITE_TEXT);
 
-	u32 stack_frame = 0;
-	found = 0;
-	for (u32 i = 0; i < FT_NUM_ENTRIES; i++)
-	{
-		if (frame_table[i].pid == FRAME_AVAILABLE)
-		{
-			stack_frame = i;
-			found = 1;
-			break;
-		}
-	}
-	
-	if (!found)
-	{
-		putnum(0,0,5,WHITE_TEXT);
-		asm("hlt");
-	}
-
 	u32 stack_page = 0;
-	found = 0;
+	u8 found = 0;
 	for (u32 i = 0; i < PAGING_TABLE_NUM_ENTRIES; i++)
 	{
 		if (root_pt[i].reserved == PDE_UNINITIALIZED)

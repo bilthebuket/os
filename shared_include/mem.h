@@ -30,4 +30,6 @@ typedef struct
 
 _Static_assert(sizeof(smap) == 5 * sizeof(u32), "smap struct has been padded (big no no)");
 
+void __attribute__((stdcall)) move_stack(u32 new_location, u32 kernel_info_physical_location, u32 gdt_location, u32 stage_two_sectors, u32 stack_frame);
+
 #endif
