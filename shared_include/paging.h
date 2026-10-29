@@ -52,7 +52,8 @@ u32 map_virtual_to_physical
 	PageDirectoryEntry* page_table,
 	FrameTableEntry* frame_table,
 	u32 virtual_address,
-	u32 size
+	u32 size,
+	s16 pid
 );
 
 #endif

@@ -231,8 +231,10 @@ void __attribute__((stdcall)) stage_two(u32 smap_addr, u16 smap_size, u32 stage_
 				root_pt,
 				frame_table,
 				pht[i].virtual_address,
-				pht[i].memory_size
+				pht[i].memory_size,
+				ROOT_PROCESS
 			);
+		putnum(i, MAX_DIGITS * 2, i, WHITE_TEXT);
 		u32 disk_address_bytes = (stage_two_sectors + 1) * SECTOR_SIZE + sizeof(ELFProgramHeader) + sizeof(ELFProgramHeader) * header->pht_num_entries + pht[i].offset;
 		u32 disk_end_address_bytes = disk_address_bytes + pht[i].file_size;
 		if (disk_end_address_bytes % SECTOR_SIZE != 0)
