@@ -103,6 +103,7 @@ void __attribute__((stdcall)) read_smap_init_ft_move_stack(u32 smap_addr, u16 sm
 	putnum(1, MAX_DIGITS, 1, WHITE_TEXT);
 	u16 frame_index = 0;
 	u8* availability_table = (void*) kernel_info_physical_location + FRAME_AVAILABILITY_TABLE_ADDRESS;
+	u32 count = 0;
 	for (u16 i = 0; i < smap_size; i++)
 	{
 		if (smap[i].addr_high != 0)
@@ -129,6 +130,7 @@ void __attribute__((stdcall)) read_smap_init_ft_move_stack(u32 smap_addr, u16 sm
 			{
 				u16 this_index = frame_index + j;
 				availability_table[this_index / 8] |= 1 << (this_index % 8);
+				count++;
 			}
 			frame_index += num_frames;
 		}
@@ -143,6 +145,9 @@ void __attribute__((stdcall)) read_smap_init_ft_move_stack(u32 smap_addr, u16 sm
 			frame_index += num_frames;
 		}
 	}
+
+	putnum(0,0,count,WHITE_TEXT);
+	asm("hlt");
 
 	u8* new_gdt = (void*) kernel_info_physical_location + GDT_ADDRESS;
 	u8* old_gdt = (void*) gdt_location;
@@ -175,13 +180,11 @@ void __attribute__((stdcall)) read_smap_init_ft_move_stack(u32 smap_addr, u16 sm
 	}
 	pde_init(&root_pt[ROOT_PAGE_TABLE_ENTRY], kernel_info_physical_location / FRAME_SIZE);
 
-	putnum(2, MAX_DIGITS, 2, WHITE_TEXT);
-
 	disk_init();
 
 	u32 stack_frame = 0;
 	found = 0;
-	for (u32 i = 0; i < FT_NUM_ENTRIES; i++)
+	for (u32 i = 1; i < FT_NUM_ENTRIES; i++)
 	{
 		if (frame_table[i].pid == FRAME_AVAILABLE)
 		{
@@ -190,8 +193,10 @@ void __attribute__((stdcall)) read_smap_init_ft_move_stack(u32 smap_addr, u16 sm
 			break;
 		}
 	}
+
+	putnum(2, MAX_DIGITS, 2, WHITE_TEXT);
 	
-	if (!found || stack_frame == 0)
+	if (!found)
 	{
 		putnum(0,0,5,WHITE_TEXT);
 		asm("hlt");
@@ -203,6 +208,7 @@ void __attribute__((stdcall)) read_smap_init_ft_move_stack(u32 smap_addr, u16 sm
 
 void __attribute__((stdcall)) stage_two(u32 kernel_info_physical_location, u32 gdt_location, u32 stage_two_sectors, u32 stack_frame)
 {
+	putnum(3, MAX_DIGITS, 3, WHITE_TEXT);
 	PageDirectoryEntry* root_pt = (void*) kernel_info_physical_location + ROOT_PT_ADDRESS;
 	FrameTableEntry* frame_table = (void*) kernel_info_physical_location + FT_ADDRESS;
 	u8* old_gdt = (void*) gdt_location;
@@ -244,8 +250,6 @@ void __attribute__((stdcall)) stage_two(u32 kernel_info_physical_location, u32 g
 			asm("hlt");
 		}
 	}
-
-	putnum(3, MAX_DIGITS, 3, WHITE_TEXT);
 
 	ELFProgramHeader* pht = (void*) &pht_buf[sizeof(ELFHeader)];
 

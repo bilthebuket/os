@@ -145,6 +145,9 @@ exit_find_avail_memory:
 	int 0x13
 	jc error
 
+	mov eax, [esp + 0xC]
+	mov [0x7BFC], eax
+
 	; mask pic
 	mov dx, 0x21
 	mov al, 0xFF
