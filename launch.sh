@@ -3,7 +3,6 @@ qemu-system-i386 \
 	-m 4G \
 	-drive file=os.img,format=raw \
 	-d in_asm,exec \
-	-dfilter 0x0..0x2000 \
 	-D qemu.log \
 	-no-reboot \
 	-no-shutdown \

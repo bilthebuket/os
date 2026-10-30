@@ -101,53 +101,33 @@ void __attribute__((stdcall)) read_smap_init_ft_move_stack(u32 smap_addr, u16 sm
 	}
 
 	putnum(1, MAX_DIGITS, 1, WHITE_TEXT);
-	u16 frame_index = 0;
 	u8* availability_table = (void*) kernel_info_physical_location + FRAME_AVAILABILITY_TABLE_ADDRESS;
-	u32 count = 0;
+	for (u16 i = 0; i < FRAME_AVAILABILITY_TABLE_SIZE; i++)
+	{
+		availability_table[i] = 0;
+	}
 	for (u16 i = 0; i < smap_size; i++)
 	{
-		if (smap[i].addr_high != 0)
+		if (smap[i].type == MEM_AVAILABLE && smap[i].addr_high == 0)
 		{
-			continue;
-		}
-		u16 num_frames = 0;
-		u32 trimmed_length = smap[i].length_low;
-		if (smap[i].addr_low % FRAME_SIZE != 0)
-		{
-			trimmed_length -= FRAME_SIZE - (smap[i].addr_low % FRAME_SIZE);
-			num_frames++;
-		}
-		if ((smap[i].addr_low + smap[i].length_low) % FRAME_SIZE != 0)
-		{
-			trimmed_length -= (smap[i].addr_low + smap[i].length_low) % FRAME_SIZE;
-			num_frames++;
-		}
-
-		if (smap[i].type == MEM_AVAILABLE)
-		{
+			u32 trimmed_length = smap[i].length_low;
+			u16 frame_index = smap[i].addr_low / FRAME_SIZE;
+			if (smap[i].addr_low % FRAME_SIZE != 0)
+			{
+				trimmed_length -= FRAME_SIZE - (smap[i].addr_low % FRAME_SIZE);
+				frame_index++;
+			}
+			if ((smap[i].addr_low + smap[i].length_low) % FRAME_SIZE != 0)
+			{
+				trimmed_length -= (smap[i].addr_low + smap[i].length_low) % FRAME_SIZE;
+			}
 			u16 num_frames = smap[i].length_low / FRAME_SIZE;
-			for (u16 j = 0; j < num_frames; j++)
+			for (u16 j = 0; j < num_frames && frame_index + j < FT_NUM_ENTRIES; j++)
 			{
-				u16 this_index = frame_index + j;
-				availability_table[this_index / 8] |= 1 << (this_index % 8);
-				count++;
+				availability_table[(frame_index + j) / 8] |= 1 << ((frame_index + j) % 8);
 			}
-			frame_index += num_frames;
-		}
-		else
-		{
-			num_frames += trimmed_length / FRAME_SIZE;
-			for (u16 j = 0; j < num_frames; j++)
-			{
-				u16 this_index = frame_index + j;
-				availability_table[this_index / 8] &= ~(1 << (this_index % 8));
-			}
-			frame_index += num_frames;
 		}
 	}
-
-	putnum(0,0,count,WHITE_TEXT);
-	asm("hlt");
 
 	u8* new_gdt = (void*) kernel_info_physical_location + GDT_ADDRESS;
 	u8* old_gdt = (void*) gdt_location;
@@ -176,7 +156,7 @@ void __attribute__((stdcall)) read_smap_init_ft_move_stack(u32 smap_addr, u16 sm
 	PageDirectoryEntry* root_pt = (void*) kernel_info_physical_location + ROOT_PT_ADDRESS;
 	for (u32 i = 0; i < PAGING_TABLE_NUM_ENTRIES; i++)
 	{
-		root_pt[i].reserved = PDE_UNINITIALIZED;
+		root_pt[i].metadata = PDE_UNINITIALIZED;
 	}
 	pde_init(&root_pt[ROOT_PAGE_TABLE_ENTRY], kernel_info_physical_location / FRAME_SIZE);
 
@@ -297,7 +277,7 @@ void __attribute__((stdcall)) stage_two(u32 kernel_info_physical_location, u32 g
 	u8 found = 0;
 	for (u32 i = 0; i < PAGING_TABLE_NUM_ENTRIES; i++)
 	{
-		if (root_pt[i].reserved == PDE_UNINITIALIZED)
+		if (root_pt[i].metadata == PDE_UNINITIALIZED)
 		{
 			stack_page = i;
 			found = 1;
@@ -321,11 +301,24 @@ void __attribute__((stdcall)) stage_two(u32 kernel_info_physical_location, u32 g
 		elf_sectors++;
 	}
 
+	for (u32 i = stack_page; i < PAGING_TABLE_NUM_ENTRIES; i++)
+	{
+		if (root_pt[i].metadata == PDE_UNINITIALIZED)
+		{
+			pde_init(&root_pt[i], TEXT_BUF_ADDR / FRAME_SIZE);
+			u32* vga_location = (void*) kernel_info_physical_location + VGA_TEXT_LOCATION_ADDRESS;
+			*vga_location = i * FRAME_SIZE + TEXT_BUF_ADDR;
+			frame_table[i].pde_index = TEXT_BUF_ADDR / FRAME_SIZE;
+			frame_table[i].pid = ROOT_PROCESS;
+			break;
+		}
+	}
+
 	u32 virt_equal_phys = 0;
 	found = 0;
 	for (u32 i = 0; i < FT_NUM_ENTRIES; i++)
 	{
-		if (root_pt[i].reserved == PDE_UNINITIALIZED && frame_table[i].pid == FRAME_AVAILABLE)
+		if (root_pt[i].metadata == PDE_UNINITIALIZED && frame_table[i].pid == FRAME_AVAILABLE)
 		{
 			virt_equal_phys = i;
 			found = 1;
@@ -358,7 +351,9 @@ void __attribute__((stdcall)) stage_two(u32 kernel_info_physical_location, u32 g
 	*(u16*) temp_gdtr = GDT_SIZE - 1;
 	*(u32*) (temp_gdtr + 2) = (u32) temp_gdt;
 
-	void __attribute((stdcall)) (*enable_paging_jump_to_kernel_main)(
+	putnum(5, MAX_DIGITS, 5, WHITE_TEXT);
+
+	void __attribute__((stdcall)) (*enable_paging_jump_to_kernel_main)(
 			u32 temp_gdtr,
 			u32 pt_location,
 			u32 perm_gdt_virtual_location,

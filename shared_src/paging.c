@@ -4,7 +4,6 @@
 void pde_init(PageDirectoryEntry* pde, u16 address)
 {
 	pde->metadata = 0;
-	pde->reserved = PDE_INITIALIZED;
 	pde->address = address << (16 - PAGE_ADDRESS_LEN);
 	
 	pde->metadata |= PAGE_PS;

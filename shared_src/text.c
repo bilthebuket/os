@@ -1,12 +1,22 @@
 #include "text.h"
 #include "def.h"
+#include "paging.h"
+#include "mem.h"
 
-#define TEXT_BUF_ADDR 0xB8000
 #define BYTES_PER_CELL 2
 
 void putc(u32 y, u32 x, u8 c, u8 attributes)
 {
-	u8* buf = (u8*) TEXT_BUF_ADDR;
+	u8* buf;
+	if (paging_enabled_huh())
+	{
+		buf = (u8*) (*(u32*) VGA_TEXT_LOCATION_ADDRESS);
+	}
+	else
+	{
+		buf = (u8*) TEXT_BUF_ADDR;
+	}
+
 	if (y >= SCREEN_HEIGHT || x >= SCREEN_WIDTH)
 	{
 		return;

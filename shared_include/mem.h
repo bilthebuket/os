@@ -18,6 +18,8 @@
 #define FT_SIZE (sizeof(FrameTableEntry) * FT_NUM_ENTRIES)
 #define ROOT_PT_ADDRESS (FT_ADDRESS + FT_SIZE)
 #define ROOT_PT_SIZE (sizeof(PageDirectoryEntry) * PAGING_TABLE_NUM_ENTRIES)
+#define VGA_TEXT_LOCATION_ADDRESS (ROOT_PT_ADDRESS + ROOT_PT_SIZE)
+#define VGA_TEXT_LOCATION_SIZE 4
 
 typedef struct
 {

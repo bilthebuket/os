@@ -1,6 +1,7 @@
 bits 32
 
 section .text:
+
 	global move_stack
 	extern stage_two
 

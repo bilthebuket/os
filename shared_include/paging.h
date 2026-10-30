@@ -25,14 +25,13 @@
 
 #define ROOT_PAGE_TABLE_ENTRY 0
 
-#define PDE_UNINITIALIZED 1
+#define PDE_UNINITIALIZED 0xFFFF
 #define PDE_INITIALIZED 0
 
 typedef struct
 {
 	u16 metadata;
-	u16 reserved;
-	u32 address;
+	u16 address;
 } PageDirectoryEntry;
 
 typedef struct
@@ -41,7 +40,7 @@ typedef struct
 	u16 pde_index;
 } FrameTableEntry;
 
-_Static_assert(sizeof(PageDirectoryEntry) == 8, "pde struct has been padded");
+_Static_assert(sizeof(PageDirectoryEntry) == 4, "pde struct has been padded");
 _Static_assert(sizeof(FrameTableEntry) == 4, "fte struct has been padded");
 
 // address is the (physical address of the start of the frame) >> 22, so really its just the index in the frame table
@@ -55,5 +54,7 @@ u32 map_virtual_to_physical
 	u32 size,
 	s16 pid
 );
+
+u32 __attribute__((stdcall)) paging_enabled_huh(void);
 
 #endif
