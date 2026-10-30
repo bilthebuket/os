@@ -10,7 +10,7 @@
 __attribute__((used, section(".stage_two_entry")))
 void __attribute__((stdcall)) read_smap_init_ft_move_stack(u32 smap_addr, u16 smap_size, u32 stage_two_location, u16 stage_two_sectors, u32 gdt_location)
 {
-	putnum(0, MAX_DIGITS, 0, WHITE_TEXT);
+	putnum(0,0, MAX_DIGITS, 0, WHITE_TEXT);
 
 	smap* smap = (void*) smap_addr;
 	u32 end_of_smap = smap_addr + smap_size * sizeof(smap);
@@ -100,7 +100,7 @@ void __attribute__((stdcall)) read_smap_init_ft_move_stack(u32 smap_addr, u16 sm
 		asm("hlt");
 	}
 
-	putnum(1, MAX_DIGITS, 1, WHITE_TEXT);
+	putnum(0,1, MAX_DIGITS, 1, WHITE_TEXT);
 	u8* availability_table = (void*) kernel_info_physical_location + FRAME_AVAILABILITY_TABLE_ADDRESS;
 	for (u16 i = 0; i < FRAME_AVAILABILITY_TABLE_SIZE; i++)
 	{
@@ -151,14 +151,12 @@ void __attribute__((stdcall)) read_smap_init_ft_move_stack(u32 smap_addr, u16 sm
 	}
 
 	frame_table[kernel_info_physical_location / FRAME_SIZE].pid = ROOT_PROCESS;
-	frame_table[kernel_info_physical_location / FRAME_SIZE].pde_index = ROOT_PAGE_TABLE_ENTRY; // every page table must map virtual 0x0 - 0x400000 to the kernel info frame
 
 	PageDirectoryEntry* root_pt = (void*) kernel_info_physical_location + ROOT_PT_ADDRESS;
 	for (u32 i = 0; i < PAGING_TABLE_NUM_ENTRIES; i++)
 	{
 		root_pt[i].metadata = PDE_UNINITIALIZED;
 	}
-	pde_init(&root_pt[ROOT_PAGE_TABLE_ENTRY], kernel_info_physical_location / FRAME_SIZE);
 
 	disk_init();
 
@@ -174,11 +172,11 @@ void __attribute__((stdcall)) read_smap_init_ft_move_stack(u32 smap_addr, u16 sm
 		}
 	}
 
-	putnum(2, MAX_DIGITS, 2, WHITE_TEXT);
+	putnum(0,2, MAX_DIGITS, 2, WHITE_TEXT);
 	
 	if (!found)
 	{
-		putnum(0,0,5,WHITE_TEXT);
+		putnum(0,0,0,5,WHITE_TEXT);
 		asm("hlt");
 	}
 
@@ -188,7 +186,7 @@ void __attribute__((stdcall)) read_smap_init_ft_move_stack(u32 smap_addr, u16 sm
 
 void __attribute__((stdcall)) stage_two(u32 kernel_info_physical_location, u32 gdt_location, u32 stage_two_sectors, u32 stack_frame)
 {
-	putnum(3, MAX_DIGITS, 3, WHITE_TEXT);
+	putnum(0,3, MAX_DIGITS, 3, WHITE_TEXT);
 	PageDirectoryEntry* root_pt = (void*) kernel_info_physical_location + ROOT_PT_ADDRESS;
 	FrameTableEntry* frame_table = (void*) kernel_info_physical_location + FT_ADDRESS;
 	u8* old_gdt = (void*) gdt_location;
@@ -196,7 +194,7 @@ void __attribute__((stdcall)) stage_two(u32 kernel_info_physical_location, u32 g
 	u8 buf[SECTOR_SIZE];
 	if (!disk_read_poll(stage_two_sectors + 1, 1, (u32) &buf[0]))
 	{
-		putnum(0,0,1,WHITE_TEXT);
+		putnum(0,0,0,1,WHITE_TEXT);
 		asm("hlt");
 	}
 
@@ -204,7 +202,7 @@ void __attribute__((stdcall)) stage_two(u32 kernel_info_physical_location, u32 g
 	u32 elf_total_size;
 	if (!elf_read_header(header, &elf_total_size))
 	{
-		putnum(0,0,2,WHITE_TEXT);
+		putnum(0,0,0,2,WHITE_TEXT);
 		asm("hlt");
 	}
 
@@ -226,7 +224,7 @@ void __attribute__((stdcall)) stage_two(u32 kernel_info_physical_location, u32 g
 	{
 		if (!disk_read_poll(stage_two_sectors + 2, pht_buf_size / SECTOR_SIZE - 1, (u32) &pht_buf[SECTOR_SIZE]))
 		{
-			putnum(0,0,3,WHITE_TEXT);
+			putnum(0,0,0,3,WHITE_TEXT);
 			asm("hlt");
 		}
 	}
@@ -257,7 +255,7 @@ void __attribute__((stdcall)) stage_two(u32 kernel_info_physical_location, u32 g
 		u8 segment_buf[num_sectors * SECTOR_SIZE];
 		if (!disk_read_poll(disk_address_sector, num_sectors, (u32) &segment_buf[0]))
 		{
-			putnum(0,0,4,WHITE_TEXT);
+			putnum(0,0,0,4,WHITE_TEXT);
 			asm("hlt");
 		}
 
@@ -266,12 +264,9 @@ void __attribute__((stdcall)) stage_two(u32 kernel_info_physical_location, u32 g
 		{
 			ptr[i] = segment_buf[i + start_offset];
 		}
-
-		frame_table[physical_address / FRAME_SIZE].pid = ROOT_PROCESS;
-		frame_table[physical_address / FRAME_SIZE].pde_index = ROOT_PAGE_TABLE_ENTRY;
 	}
 
-	putnum(4, MAX_DIGITS, 4, WHITE_TEXT);
+	putnum(0,4, MAX_DIGITS, 4, WHITE_TEXT);
 
 	u32 stack_page = 0;
 	u8 found = 0;
@@ -287,7 +282,7 @@ void __attribute__((stdcall)) stage_two(u32 kernel_info_physical_location, u32 g
 
 	if (!found)
 	{
-		putnum(0,0,6,WHITE_TEXT);
+		putnum(0,0,0,6,WHITE_TEXT);
 		asm("hlt");
 	}
 
@@ -328,13 +323,13 @@ void __attribute__((stdcall)) stage_two(u32 kernel_info_physical_location, u32 g
 
 	if (!found)
 	{
-		putnum(0,0,7,WHITE_TEXT);
+		putnum(0,0,0,7,WHITE_TEXT);
 		asm("hlt");
 	}
 
 	if (!disk_read_poll(stage_two_sectors + 1 + elf_sectors, 1, virt_equal_phys * FRAME_SIZE))
 	{
-		putnum(0,0,8,WHITE_TEXT);
+		putnum(0,0,0,8,WHITE_TEXT);
 		asm("hlt");
 	}
 
@@ -351,7 +346,28 @@ void __attribute__((stdcall)) stage_two(u32 kernel_info_physical_location, u32 g
 	*(u16*) temp_gdtr = GDT_SIZE - 1;
 	*(u32*) (temp_gdtr + 2) = (u32) temp_gdt;
 
-	putnum(5, MAX_DIGITS, 5, WHITE_TEXT);
+	found = 0;
+	u32 kernel_info_virtual_address = 0;
+	for (u32 i = 0; i < FT_NUM_ENTRIES; i++)
+	{
+		if (root_pt[i].metadata == PDE_UNINITIALIZED)
+		{
+			kernel_info_virtual_address = i * FRAME_SIZE;
+			found = 1;
+			pde_init(&root_pt[i], kernel_info_physical_location / FRAME_SIZE);
+			break;
+		}
+	}
+
+	frame_table[kernel_info_physical_location / FRAME_SIZE].pde_index = kernel_info_virtual_address / FRAME_SIZE;
+
+	if (!found)
+	{
+		putnum(0,0,0,9,WHITE_TEXT);
+		asm("hlt");
+	}
+
+	putnum(0,5, MAX_DIGITS, 5, WHITE_TEXT);
 
 	void __attribute__((stdcall)) (*enable_paging_jump_to_kernel_main)(
 			u32 temp_gdtr,
@@ -359,7 +375,17 @@ void __attribute__((stdcall)) stage_two(u32 kernel_info_physical_location, u32 g
 			u32 perm_gdt_virtual_location,
 			u32 gdt_size,
 			u32 virtual_stack,
+			u32 kernel_info_virtual_address,
 			u32 kernel_main
 		) = (void*) (virt_equal_phys * FRAME_SIZE);
-	(*enable_paging_jump_to_kernel_main)(temp_gdtr, kernel_info_physical_location + ROOT_PT_ADDRESS, GDT_ADDRESS, GDT_SIZE, (stack_page + 1) * FRAME_SIZE, header->entry_point);
+	(*enable_paging_jump_to_kernel_main)
+		(
+			temp_gdtr,
+			kernel_info_physical_location + ROOT_PT_ADDRESS,
+			kernel_info_virtual_address + GDT_ADDRESS,
+			GDT_SIZE,
+			(stack_page + 1) * FRAME_SIZE,
+			kernel_info_virtual_address,
+			header->entry_point
+		);
 }

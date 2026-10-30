@@ -2,29 +2,33 @@ bits 32
 
 lgdt [esp + 4]
 mov eax, [esp + 8]
+
+mov ebx, [esp + 0xC]
+mov ecx, [esp + 0x10]
+mov edx, [esp + 0x14]
+mov ebp, [esp + 0x18]
+mov esi, [esp + 0x1C]
+
 mov cr3, eax
 mov eax, cr4
 or eax, 0x10
 mov cr4, eax
 mov eax, cr0
-or eax, 0x80000001
-
-
-
+or eax, 0x80000000
 mov cr0, eax
 
-mov [0xB8000], 'a'
-mov [0xB8001], 0xf
+lea eax, [ebp + 0x2898]
+mov eax, [eax]
+mov [eax], 'a'
+mov [eax + 1], 0xf
+hlt
 
-
-mov eax, [esp + 0xC]
-mov ebx, [esp + 0x10]
-push eax
-push bx
+mov esp, edx
+push ebx
+push cx
 lgdt [esp]
+pop cx
+pop ebx
 
-pop eax
-pop bx
-mov eax, [esp + 0x18]
-mov esp, [esp + 0x14]
-jmp eax
+push ebp
+call esi

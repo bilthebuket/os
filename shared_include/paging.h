@@ -23,15 +23,17 @@
 #define FRAME_AVAILABLE -1
 #define FRAME_RESERVED -2
 
-#define ROOT_PAGE_TABLE_ENTRY 0
-
 #define PDE_UNINITIALIZED 0xFFFF
 #define PDE_INITIALIZED 0
 
-typedef struct
+typedef union
 {
-	u16 metadata;
-	u16 address;
+	u32 combined;
+	struct
+	{
+		u16 metadata;
+		u16 address;
+	};
 } PageDirectoryEntry;
 
 typedef struct

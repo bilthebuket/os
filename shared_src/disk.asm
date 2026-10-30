@@ -19,6 +19,7 @@ error:
 	push eax
 	push long 0x0
 	push long 0x2
+	push long 0
 	call putnum
 
 	mov dx, 0x1F1
@@ -28,6 +29,7 @@ error:
 	push eax
 	push long 0x0
 	push long 0x1
+	push long 0
 	call putnum
 	pop eax ; pop the request return address off the stack so we can return directly to the caller of the disk request
 	mov eax, 0
