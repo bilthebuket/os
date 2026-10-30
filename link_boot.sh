@@ -47,3 +47,4 @@ rm transition.bin
 rm main.elf
 rm main.o
 rm mem_asm.o
+rm paging_asm.o
