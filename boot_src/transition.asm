@@ -17,16 +17,11 @@ mov eax, cr0
 or eax, 0x80000000
 mov cr0, eax
 
-lea eax, [ebp + 0x2898]
-mov eax, [eax]
-mov [eax], 'a'
-mov [eax + 1], 0xf
-hlt
-
 mov esp, edx
 push ebx
 push cx
 lgdt [esp]
+
 pop cx
 pop ebx
 

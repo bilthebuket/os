@@ -44,7 +44,7 @@ rm disk_asm.o
 rm elf.o
 rm paging.o
 rm transition.bin
-rm main.elf
+#rm main.elf
 rm main.o
 rm mem_asm.o
 rm paging_asm.o

@@ -231,6 +231,8 @@ void __attribute__((stdcall)) stage_two(u32 kernel_info_physical_location, u32 g
 
 	ELFProgramHeader* pht = (void*) &pht_buf[sizeof(ELFHeader)];
 
+	putnum(0,0,0,header->pht_num_entries,WHITE_TEXT);
+	asm("hlt");
 	for (u32 i = 0; i < header->pht_num_entries; i++)
 	{
 		u32 physical_address = map_virtual_to_physical
@@ -241,7 +243,7 @@ void __attribute__((stdcall)) stage_two(u32 kernel_info_physical_location, u32 g
 				pht[i].memory_size,
 				ROOT_PROCESS
 			);
-		u32 disk_address_bytes = (stage_two_sectors + 1) * SECTOR_SIZE + sizeof(ELFProgramHeader) + sizeof(ELFProgramHeader) * header->pht_num_entries + pht[i].offset;
+		u32 disk_address_bytes = (stage_two_sectors + 1) * SECTOR_SIZE + sizeof(ELFHeader) + sizeof(ELFProgramHeader) * header->pht_num_entries + pht[i].offset;
 		u32 disk_end_address_bytes = disk_address_bytes + pht[i].file_size;
 		if (disk_end_address_bytes % SECTOR_SIZE != 0)
 		{
@@ -259,7 +261,7 @@ void __attribute__((stdcall)) stage_two(u32 kernel_info_physical_location, u32 g
 			asm("hlt");
 		}
 
-		u8* ptr = (void*) physical_address;
+		u8* ptr = (void*) physical_address + (pht[i].virtual_address % FRAME_SIZE);
 		for (u32 i = 0; i < pht[i].file_size; i++)
 		{
 			ptr[i] = segment_buf[i + start_offset];
