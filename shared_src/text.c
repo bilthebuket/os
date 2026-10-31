@@ -7,10 +7,11 @@
 
 void putc(u8* text_buf_addr, u32 y, u32 x, u8 c, u8 attributes)
 {
-	if ((u32) text_buf_addr == 0)
+	if (!paging_enabled_huh())
 	{
 		text_buf_addr = (void*) TEXT_BUF_ADDR;
 	}
+
 	if (y >= SCREEN_HEIGHT || x >= SCREEN_WIDTH)
 	{
 		return;

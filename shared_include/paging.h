@@ -48,13 +48,14 @@ _Static_assert(sizeof(FrameTableEntry) == 4, "fte struct has been padded");
 // address is the (physical address of the start of the frame) >> 22, so really its just the index in the frame table
 void pde_init(PageDirectoryEntry* pde, u16 address);
 // returns physical address
-u32 map_virtual_to_physical
+void map_virtual_to_physical
 (
 	PageDirectoryEntry* page_table,
 	FrameTableEntry* frame_table,
 	u32 virtual_address,
 	u32 size,
-	s16 pid
+	s16 pid,
+	u32* physical_addresses
 );
 
 u32 __attribute__((stdcall)) paging_enabled_huh(void);

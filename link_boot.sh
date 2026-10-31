@@ -20,7 +20,7 @@ nasm -f elf32 shared_src/mem.asm -o mem_asm.o
 nasm -f elf32 shared_src/paging.asm -o paging_asm.o
 
 ld -m elf_i386 -T boot2.ld boot2.o text.o disk_asm.o paging.o elf.o debug_asm.o mem_asm.o paging_asm.o -o boot2.elf
-ld -m elf_i386 -T kernel.ld text.o main.o paging_asm.o -o main.elf
+ld -m elf_i386 -T kernel.ld text.o main.o paging_asm.o global.o -o main.elf
 
 objcopy -O binary boot2.elf boot2.bin
 

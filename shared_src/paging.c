@@ -11,13 +11,14 @@ void pde_init(PageDirectoryEntry* pde, u16 address)
 	pde->metadata |= PAGE_PRESENT;
 }
 
-u32 map_virtual_to_physical
+void map_virtual_to_physical
 (
 	PageDirectoryEntry* page_table,
 	FrameTableEntry* frame_table,
 	u32 virtual_address,
 	u32 size,
-	s16 pid
+	s16 pid,
+	u32* physical_addresses
 )
 {
 	// the offset in the physical frame needs to match the offset of the virtual address, 
@@ -43,7 +44,6 @@ u32 map_virtual_to_physical
 		pde_init(&page_table[virtual_address / FRAME_SIZE + i], frame_table_index);
 		frame_table[frame_table_index].pid = pid;
 		frame_table[frame_table_index].pde_index = virtual_address / FRAME_SIZE + i;
+		physical_addresses[i] = frame_table_index * FRAME_SIZE;
 	}
-
-	return frame_table_index * FRAME_SIZE;
 }

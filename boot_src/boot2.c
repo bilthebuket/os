@@ -231,40 +231,54 @@ void __attribute__((stdcall)) stage_two(u32 kernel_info_physical_location, u32 g
 
 	ELFProgramHeader* pht = (void*) &pht_buf[sizeof(ELFHeader)];
 
-	putnum(0,0,0,header->pht_num_entries,WHITE_TEXT);
-	asm("hlt");
 	for (u32 i = 0; i < header->pht_num_entries; i++)
 	{
-		u32 physical_address = map_virtual_to_physical
+		// the size of this buffer does not need to be this big but the difference between this and the optimal buffer size
+		// is at most 8 bytes
+		u32 physical_addresses[pht[i].memory_size / FRAME_SIZE + 2];
+		map_virtual_to_physical
 			(
 				root_pt,
 				frame_table,
 				pht[i].virtual_address,
 				pht[i].memory_size,
-				ROOT_PROCESS
+				ROOT_PROCESS,
+				&physical_addresses[0]
 			);
-		u32 disk_address_bytes = (stage_two_sectors + 1) * SECTOR_SIZE + sizeof(ELFHeader) + sizeof(ELFProgramHeader) * header->pht_num_entries + pht[i].offset;
-		u32 disk_end_address_bytes = disk_address_bytes + pht[i].file_size;
-		if (disk_end_address_bytes % SECTOR_SIZE != 0)
+		if (pht[i].file_size > 0)
 		{
-			disk_end_address_bytes += SECTOR_SIZE - (disk_end_address_bytes % SECTOR_SIZE);
-		}
+			u32 disk_address_bytes = (stage_two_sectors + 1) * SECTOR_SIZE + pht[i].offset;
+			u32 disk_end_address_bytes = disk_address_bytes + pht[i].file_size;
+			if (disk_end_address_bytes % SECTOR_SIZE != 0)
+			{
+				disk_end_address_bytes += SECTOR_SIZE - (disk_end_address_bytes % SECTOR_SIZE);
+			}
 
-		u32 start_offset = disk_address_bytes % SECTOR_SIZE;
-		disk_address_bytes -= start_offset;
-		u32 disk_address_sector = disk_address_bytes / SECTOR_SIZE;
-		u32 num_sectors = disk_end_address_bytes / SECTOR_SIZE - disk_address_sector;
-		u8 segment_buf[num_sectors * SECTOR_SIZE];
-		if (!disk_read_poll(disk_address_sector, num_sectors, (u32) &segment_buf[0]))
-		{
-			putnum(0,0,0,4,WHITE_TEXT);
-			asm("hlt");
-		}
+			u32 start_offset = disk_address_bytes % SECTOR_SIZE;
+			disk_address_bytes -= start_offset;
+			u32 disk_address_sector = disk_address_bytes / SECTOR_SIZE;
+			u32 num_sectors = disk_end_address_bytes / SECTOR_SIZE - disk_address_sector;
+			u8 segment_buf[num_sectors * SECTOR_SIZE];
+			if (!disk_read_poll(disk_address_sector, num_sectors, (u32) &segment_buf[0]))
+			{
+				putnum(0,0,0,4,WHITE_TEXT);
+				asm("hlt");
+			}
 
-		u8* ptr = (void*) physical_address + (pht[i].virtual_address % FRAME_SIZE);
-		for (u32 i = 0; i < pht[i].file_size; i++)
-		{
-			ptr[i] = segment_buf[i + start_offset];
+			u32 border_checker = pht[i].virtual_address % FRAME_SIZE;
+			u32 physical_address_index = 0;
+			u8* ptr = (void*) physical_addresses[physical_address_index] + (pht[i].virtual_address % FRAME_SIZE);
+			for (u32 j = 0; j < pht[i].file_size; j++, border_checker++)
+			{
+				if (border_checker == FRAME_SIZE)
+				{
+					ptr = (void*) physical_addresses[physical_address_index];
+					border_checker = 0;
+					physical_address_index++;
+					putnum(0,physical_address_index,0,physical_addresses[physical_address_index],WHITE_TEXT);
+				}
+				ptr[j] = segment_buf[j + start_offset];
+			}
 		}
 	}
 
@@ -371,7 +385,8 @@ void __attribute__((stdcall)) stage_two(u32 kernel_info_physical_location, u32 g
 
 	putnum(0,5, MAX_DIGITS, 5, WHITE_TEXT);
 
-	void __attribute__((stdcall)) (*enable_paging_jump_to_kernel_main)(
+	void __attribute__((stdcall)) (*enable_paging_jump_to_kernel_main)
+		(
 			u32 temp_gdtr,
 			u32 pt_location,
 			u32 perm_gdt_virtual_location,

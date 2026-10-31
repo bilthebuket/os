@@ -101,9 +101,10 @@ request_disk_write:
 	ret 0xC
 
 disk_read_poll:
+	sub esp, 0x30
 	push ebx
 	push edi
-	add esp, 8
+	add esp, 0x38
 	mov cl, 0x20
 	call request_disk_generic
 	cld
@@ -119,20 +120,21 @@ poll_read_loop:
 	mov eax, 0
 	jz poll_read_end
 
-	test ebx, ebx
-	mov eax, 1
-	jz poll_read_end
-
-	sub ebx, 1
-
 	mov ecx, 0x100
 	mov edx, 0x1F0
 	rep insw
 
+	sub ebx, 1
+	test ebx, ebx
+	mov eax, 1
+	jz poll_read_end
+	jmp poll_read_loop
+
 poll_read_end:
-	sub esp, 8
+	sub esp, 0x38
 	pop edi
 	pop ebx
+	add esp, 0x30
 	ret 0xC
 
 request_disk_generic:
