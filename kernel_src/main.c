@@ -2,7 +2,7 @@
 #include "global.h"
 #include "mem.h"
 
-void _start(u32 kernel_info_virtual_address)
+void _start(u32 kernel_info_virtual_address, u32 root_lba)
 {
 	kernel_info_location = kernel_info_virtual_address;
 	u32 text_buf_addr = *(u32*) (kernel_info_location + VGA_TEXT_LOCATION_ADDRESS);

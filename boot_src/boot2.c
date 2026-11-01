@@ -393,7 +393,8 @@ void __attribute__((stdcall)) stage_two(u32 kernel_info_physical_location, u32 g
 			u32 gdt_size,
 			u32 virtual_stack,
 			u32 kernel_info_virtual_address,
-			u32 kernel_main
+			u32 kernel_main,
+			u32 root_lba
 		) = (void*) (virt_equal_phys * FRAME_SIZE);
 	(*enable_paging_jump_to_kernel_main)
 		(
@@ -403,6 +404,7 @@ void __attribute__((stdcall)) stage_two(u32 kernel_info_physical_location, u32 g
 			GDT_SIZE,
 			(stack_page + 1) * FRAME_SIZE,
 			kernel_info_virtual_address,
-			header->entry_point
+			header->entry_point,
+			stage_two_sectors + elf_sectors + 2
 		);
 }
