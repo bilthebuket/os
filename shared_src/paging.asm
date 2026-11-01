@@ -1,4 +1,5 @@
 bits 32
+%include "shared_src/constants.asm"
 
 section .text:
 
@@ -6,5 +7,5 @@ section .text:
 
 paging_enabled_huh:
 	mov eax, cr0
-	and eax, 0x80000000
+	and eax, CR0_PAGING_BIT
 	ret

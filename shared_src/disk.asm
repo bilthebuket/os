@@ -22,7 +22,7 @@ error:
 	push long 0
 	call putnum
 
-	mov dx, 0x1F1
+	mov dx, ATA_ERROR
 	in al, dx
 	and eax, 0x000000FF
 	push long 0x0F
@@ -42,7 +42,7 @@ disk_read:
 	jz end
 	sub eax, 1
 	mov [ebx + disk_request_info + 0x4], eax
-	mov edx, 0x1F0
+	mov edx, ATA_DATA
 	mov ecx, 0x100
 	cld
 	mov edi, [ebx + disk_request_info]
@@ -58,7 +58,7 @@ disk_write:
 	jz end
 	sub eax, 1
 	mov [ebx + disk_request_info + 0x4], eax
-	mov edx, 0x1F0
+	mov edx, ATA_DATA
 	mov ecx, 0x0
 	mov esi, [ebx + disk_request_info]
 	cld
@@ -78,7 +78,7 @@ request_disk_read:
 	add ebx, disk_read
 	push ebx
 	;call prep_disk_isr
-	mov cl, 0x20 ; read with retry
+	mov cl, ATA_READ
 	call request_disk_generic
 
 	mov eax, 1
@@ -89,12 +89,12 @@ request_disk_write:
 	add ebx, disk_write
 	push ebx
 	;call prep_disk_isr
-	mov cl, 0x30 ; write with retry
+	mov cl, ATA_WRITE
 	call request_disk_generic
 
-	mov edx, 0x1F7
+	mov edx, ATA_COMMAND_STATUS
 	in al, dx
-	test al, 0x8
+	test al, ATA_STATUS_DRQ
 	jz error
 	call disk_write
 	mov eax, 1
@@ -105,7 +105,7 @@ disk_read_poll:
 	push ebx
 	push edi
 	add esp, 0x38
-	mov cl, 0x20
+	mov cl, ATA_READ
 	call request_disk_generic
 	cld
 	mov edi, [esp + 0xC]
@@ -114,14 +114,14 @@ disk_read_poll:
 poll_read_loop:
 	call wait_for_busy_disk
 
-	mov edx, 0x1F7
+	mov edx, ATA_COMMAND_STATUS
 	in al, dx
 	test al, 0x8
 	mov eax, 0
 	jz poll_read_end
 
 	mov ecx, 0x100
-	mov edx, 0x1F0
+	mov edx, ATA_DATA
 	rep insw
 
 	sub ebx, 1
@@ -144,9 +144,9 @@ request_disk_generic:
 	jae error
 	pop ecx
 
-	mov edx, 0x1F7
+	mov edx, ATA_COMMAND_STATUS
 	in al, dx
-	test al, 0x40
+	test al, ATA_STATUS_READY
 	jz error
 
 	push ebp
@@ -184,7 +184,7 @@ request_disk_generic:
 	shr eax, 0x10
 	out dx, al
 
-	mov edx, 0x1F7 ; send command
+	mov edx, ATA_COMMAND_STATUS ; send command
 	mov al, cl
 	out dx, al
 
@@ -193,7 +193,7 @@ request_disk_generic:
 	call disk_wait_alternate
 
 	in al, dx
-	test al, 0x01
+	test al, ATA_STATUS_ERROR
 	jnz error
 	
 	ret
@@ -209,7 +209,7 @@ disk_identify:
 	mov dx, 0x1F5
 	out dx, al
 	mov al, 0xEC
-	mov dx, 0x1F7
+	mov dx, ATA_COMMAND_STATUS
 	out dx, al
 	ret
 
@@ -273,11 +273,11 @@ found_disk:
 	jae couldnt_find_disk
 
 	in al, dx
-	test al, 0x08
+	test al, ATA_STATUS_DRQ
 	jz couldnt_find_disk
 
 	mov cx, 0x0
-	mov dx, 0x1F0
+	mov dx, ATA_DATA
 read_data:
 	in ax, dx
 	add cx, 0x1
@@ -292,10 +292,10 @@ read_data:
 
 wait_for_busy_disk:
 	mov cx, 0x0
-	mov dx, 0x1F7
+	mov dx, ATA_COMMAND_STATUS
 wait_loop:
 	in al, dx
-	test al, 0x80
+	test al, ATA_STATUS_BUSY
 	jz not_busy
 	add cx, 0x1
 	cmp cx, DISK_TIMEOUT
@@ -316,7 +316,7 @@ poll:
 
 disk_wait_alternate:
 	mov cx, 0x0
-	mov edx, 0x3F6
+	mov edx, ATA_CONTROL_ALT_STATUS
 poll_alternate:
 	in al, dx
 	add cx, 0x1
@@ -325,7 +325,7 @@ poll_alternate:
 	ret
 
 ata_enable_interrupts:
-	mov edx, 0x3F6
+	mov edx, ATA_CONTROL_ALT_STATUS
 	mov al, 0x0
 	out dx, al
 	ret

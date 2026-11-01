@@ -1,12 +1,14 @@
 bits 16
-org 0x7C00
+%include "shared_src/constants.asm"
+
+org BOOT1_LOAD_LOCATION
 
 _start:
 	cli
 	xor ax, ax
 	mov ds, ax
 	mov ss, ax
-	mov sp, 0x7C00
+	mov sp, BOOT1_LOAD_LOCATION
 	sti
 
 	mov ax, [dap + 0x2]
@@ -74,7 +76,7 @@ reserved_avoided:
 	add ebp, ebx
 	jc find_avail_memory
 	sub ebp, 0x1
-	cmp ebp, 0x10FFEF
+	cmp ebp, REAL_MODE_MAX_ADDRESS
 	ja find_avail_memory
 	mov ebp, [es:di]
 	cmp ebp, smap + 0x280
@@ -146,7 +148,7 @@ exit_find_avail_memory:
 	jc error
 
 	mov eax, [esp + 0xC]
-	mov [0x7BFC], eax
+	mov [STAGE2_LOCATION], eax
 
 	; mask pic
 	mov dx, 0x21
@@ -159,7 +161,7 @@ exit_find_avail_memory:
 	cli
 	lgdt [gdtr]
 	mov eax, cr0
-	or al, 1
+	or al, CR0_SEGMENTATION_BIT
 	mov cr0, eax
 	jmp 0x8:protected
 

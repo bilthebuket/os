@@ -1,4 +1,5 @@
 bits 32
+%include "shared_src/constants.asm"
 
 lgdt [esp + 4]
 mov eax, [esp + 8]
@@ -14,7 +15,7 @@ mov eax, cr4
 or eax, 0x10
 mov cr4, eax
 mov eax, cr0
-or eax, 0x80000000
+or eax, CR0_PAGING_BIT
 mov cr0, eax
 
 mov esp, edx
