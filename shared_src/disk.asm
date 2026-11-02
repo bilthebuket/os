@@ -5,109 +5,26 @@ section .text:
 
 extern puts
 extern putnum
-;extern prep_disk_isr
 
-global request_disk_write
-global request_disk_read
 global disk_init
 global ata_enable_interrupts
 global disk_read_poll
 
-error:
-	and eax, 0x000000FF
-	push long 0x0F
-	push eax
-	push long 0x0
-	push long 0x2
-	call putnum
-
-	mov dx, ATA_ERROR
-	in al, dx
-	and eax, 0x000000FF
-	push long 0x0F
-	push eax
-	push long 0x0
-	push long 0x1
-	call putnum
-	pop eax ; pop the request return address off the stack so we can return directly to the caller of the disk request
-	mov eax, 0
-	ret 0xC
-
-disk_read:
-	mov ebx, [STAGE2_LOCATION]
-	mov eax, [ebx + disk_request_info + 0x4]
-	test eax, eax
-	jz end
-	sub eax, 1
-	mov [ebx + disk_request_info + 0x4], eax
-	mov edx, ATA_DATA
-	mov ecx, 0x100
-	cld
-	mov edi, [ebx + disk_request_info]
-	rep insw
-	mov [ebx + disk_request_info], edi
-end:
-	ret
-
-disk_write:
-	mov ebx, [STAGE2_LOCATION]
-	mov eax, [ebx + disk_request_info + 0x4]
-	test eax, eax
-	jz end
-	sub eax, 1
-	mov [ebx + disk_request_info + 0x4], eax
-	mov edx, ATA_DATA
-	mov ecx, 0x0
-	mov esi, [ebx + disk_request_info]
-	cld
-	; using loop instead rep outsw because we need a delay in between writes to 0x1f0
-write_loop:
-	mov word ax, [esi]
-	out dx, ax
-	add esi, 2
-	add ecx, 1
-	cmp ecx, 0x100
-	jb write_loop
-	mov [ebx + disk_request_info], esi
-	ret
-
-request_disk_read:
-	mov ebx, [STAGE2_LOCATION]
-	add ebx, disk_read
-	push ebx
-	;call prep_disk_isr
-	mov cl, ATA_READ
-	call request_disk_generic
-
-	mov eax, 1
-	ret 0xC
-
-request_disk_write:
-	mov ebx, [STAGE2_LOCATION]
-	add ebx, disk_write
-	push ebx
-	;call prep_disk_isr
-	mov cl, ATA_WRITE
-	call request_disk_generic
-
-	mov edx, ATA_COMMAND_STATUS
-	in al, dx
-	test al, ATA_STATUS_DRQ
-	jz error
-	call disk_write
-	mov eax, 1
-	ret 0xC
-
 disk_read_poll:
-	sub esp, 0x30
 	push ebx
 	push edi
-	add esp, 0x38
+	push ebp
+	push esi
+
+	lea ebx, [esp + 0x14]
 	mov cl, ATA_READ
 	call request_disk_generic
+	test eax, 0xFFFFFFFF
+	jnz poll_read_end
+
 	cld
-	mov edi, [esp + 0xC]
-	mov ebx, [esp + 0x8]
+	mov edi, [esp + 0x20]
+	mov ebx, [esp + 0x1C]
 
 poll_read_loop:
 	call wait_for_busy_disk
@@ -115,7 +32,7 @@ poll_read_loop:
 	mov edx, ATA_COMMAND_STATUS
 	in al, dx
 	test al, 0x8
-	mov eax, 0
+	mov eax, ERROR_DATA_NOT_READY
 	jz poll_read_end
 
 	mov ecx, 0x100
@@ -124,48 +41,58 @@ poll_read_loop:
 
 	sub ebx, 1
 	test ebx, ebx
-	mov eax, 1
+	mov eax, 0
 	jz poll_read_end
 	jmp poll_read_loop
 
 poll_read_end:
-	sub esp, 0x38
+	pop esi
+	pop ebp
 	pop edi
 	pop ebx
-	add esp, 0x30
-	ret 0xC
+	ret 0x10
 
-request_disk_generic:
+error:
+	mov edx, ATA_ERROR
+	in al, dx
+	push long 0xf
+	push long 68
+	push long 0
+	push long 0
+	call putnum
+	hlt
+	add esp, ebx
+	ret
+
+request_disk_generic: ; ebx = pointer to the 4 argmuents, ecx = read or write
+	mov ebp, ebx
 	push ecx
 	call wait_for_busy_disk
 	cmp cx, DISK_TIMEOUT
-	jae error
 	pop ecx
+	mov eax, ERROR_DISK_TIMEOUT
+	mov ebx, 0
+	jae error
 
 	mov edx, ATA_COMMAND_STATUS
 	in al, dx
 	test al, ATA_STATUS_READY
+	mov eax, ERROR_NOT_READY
 	jz error
 
-	push ebp
+	push cx
+	mov ebx, ebp
 
-	mov ebx, [STAGE2_LOCATION]
-
-	mov eax, [esp + 0x14]
-	mov [ebx + disk_request_info], eax
-	mov eax, [esp + 0x10]
-	mov [ebx + disk_request_info + 0x8], eax
-
-	mov byte bl, [drive_bitmask + ebx]
-	mov ebp, [esp + 0xC]
+	mov ecx, [ebx]
+	mov ebp, [ebx + 0x4]
 	mov eax, ebp
 	mov edx, 0x01F6 ; send drive and bits 24-27 of lba
 	shr eax, 24
-	or al, bl
+	or al, cl
 	out dx, al
 
 	mov edx, 0x01F2 ; send number of sectors
-	mov eax, [esp + 0x10]
+	mov eax, [ebx + 0x8]
 	out dx, al
 
 	mov edx, 0x1F3 ; send bits 0-7 of lba
@@ -182,16 +109,18 @@ request_disk_generic:
 	shr eax, 0x10
 	out dx, al
 
+	pop cx
+
 	mov edx, ATA_COMMAND_STATUS ; send command
 	mov al, cl
 	out dx, al
-
-	pop ebp
 
 	call disk_wait_alternate
 
 	in al, dx
 	test al, ATA_STATUS_ERROR
+	mov eax, ERROR_DISK_ERROR
+	mov ebx, 0
 	jnz error
 	
 	ret
@@ -216,7 +145,6 @@ disk_init:
 	push esi
 	push edi
 	push ebp
-	mov ebx, [STAGE2_LOCATION]
 
 	mov dx, 0x01F6
 	mov al, 0xE0 ; try master drive
@@ -244,35 +172,33 @@ continue:
 	call disk_wait
 	call wait_for_busy_disk
 	cmp cx, DISK_TIMEOUT
-	jae couldnt_find_disk
+	mov eax, ERROR_COULDNT_FIND_DISK
+	mov ebx, 0x10
+	jae error
 	
 	mov cx, 0xF0
 	call disk_identify
 	call disk_wait
 	in al, dx
 	cmp al, 0
-	jne found_disk
+	mov eax, ERROR_COULDNT_FIND_DISK
+	mov ebx, 0x10
+	je error
 	
-couldnt_find_disk:
-	add ebx, disk_error_string
-	push 0xF
-	push ebx
-	push 0x0
-	push 0x0
-	call puts
-	cli
-	hlt
-
 found_disk:
-	mov byte [ebx + drive_bitmask], cl
+	push cx
 
 	call wait_for_busy_disk
 	cmp cx, DISK_TIMEOUT
-	jae couldnt_find_disk
+	mov eax, ERROR_COULDNT_FIND_DISK
+	mov ebx, 0x12
+	jae error
 
 	in al, dx
 	test al, ATA_STATUS_DRQ
-	jz couldnt_find_disk
+	mov eax, ERROR_COULDNT_FIND_DISK
+	mov ebx, 0x12
+	jz error
 
 	mov cx, 0x0
 	mov dx, ATA_DATA
@@ -282,6 +208,8 @@ read_data:
 	cmp cx, 0x100
 	jb read_data
 
+	pop cx
+	mov eax, ecx
 	pop ebp
 	pop edi
 	pop esi
@@ -327,14 +255,3 @@ ata_enable_interrupts:
 	mov al, 0x0
 	out dx, al
 	ret
-
-section .data:
-
-drive_bitmask:
-	db 0x0
-
-disk_request_info:
-	dd 0x0 ; buffer address
-	dd 0x0 ; number of sectors to read/write
-
-disk_error_string: db "could not find a disk that exists", 0

@@ -159,7 +159,7 @@ void __attribute__((stdcall)) read_smap_init_ft_move_stack(u32 smap_addr, u16 sm
 		root_pt[i].metadata = PDE_UNINITIALIZED;
 	}
 
-	disk_init();
+	u32 drive_mask = disk_init();
 
 	u32 stack_frame = 0;
 	found = 0;
@@ -177,15 +177,14 @@ void __attribute__((stdcall)) read_smap_init_ft_move_stack(u32 smap_addr, u16 sm
 	
 	if (!found)
 	{
-		putnum(0,0,5,WHITE_TEXT);
 		asm("hlt");
 	}
 
 	// this never returns it jumps to stage_two, had to do this because gcc assumes the stack is preserved and not moved
-	move_stack((stack_frame + 1) * FRAME_SIZE, kernel_info_physical_location, gdt_location, stage_two_sectors, stack_frame);
+	move_stack((stack_frame + 1) * FRAME_SIZE, kernel_info_physical_location, gdt_location, stage_two_sectors, stack_frame, drive_mask);
 }
 
-void __attribute__((stdcall)) stage_two(u32 kernel_info_physical_location, u32 gdt_location, u32 stage_two_sectors, u32 stack_frame)
+void __attribute__((stdcall)) stage_two(u32 kernel_info_physical_location, u32 gdt_location, u32 stage_two_sectors, u32 stack_frame, u32 drive_mask)
 {
 	putnum(3, MAX_DIGITS, 3, WHITE_TEXT);
 	PageDirectoryEntry* root_pt = (void*) kernel_info_physical_location + ROOT_PT_ADDRESS;
@@ -193,9 +192,10 @@ void __attribute__((stdcall)) stage_two(u32 kernel_info_physical_location, u32 g
 	u8* old_gdt = (void*) gdt_location;
 
 	u8 buf[SECTOR_SIZE];
-	if (!disk_read_poll(stage_two_sectors + 1, 1, (u32) &buf[0]))
+	u32 err;
+	if (err = disk_read_poll(drive_mask, stage_two_sectors + 1, 1, (u32) &buf[0]))
 	{
-		putnum(0,0,1,WHITE_TEXT);
+		putnum(0,0,err,WHITE_TEXT);
 		asm("hlt");
 	}
 
@@ -203,7 +203,6 @@ void __attribute__((stdcall)) stage_two(u32 kernel_info_physical_location, u32 g
 	u32 elf_total_size;
 	if (!elf_read_header(header, &elf_total_size))
 	{
-		putnum(0,0,2,WHITE_TEXT);
 		asm("hlt");
 	}
 
@@ -223,9 +222,10 @@ void __attribute__((stdcall)) stage_two(u32 kernel_info_physical_location, u32 g
 	}
 	if (pht_buf_size > SECTOR_SIZE)
 	{
-		if (!disk_read_poll(stage_two_sectors + 2, pht_buf_size / SECTOR_SIZE - 1, (u32) &pht_buf[SECTOR_SIZE]))
+		u32 err;
+		if (err = disk_read_poll(drive_mask, stage_two_sectors + 2, pht_buf_size / SECTOR_SIZE - 1, (u32) &pht_buf[SECTOR_SIZE]))
 		{
-			putnum(0,0,3,WHITE_TEXT);
+			putnum(0,0,err,WHITE_TEXT);
 			asm("hlt");
 		}
 	}
@@ -260,9 +260,10 @@ void __attribute__((stdcall)) stage_two(u32 kernel_info_physical_location, u32 g
 			u32 disk_address_sector = disk_address_bytes / SECTOR_SIZE;
 			u32 num_sectors = disk_end_address_bytes / SECTOR_SIZE - disk_address_sector;
 			u8 segment_buf[num_sectors * SECTOR_SIZE];
-			if (!disk_read_poll(disk_address_sector, num_sectors, (u32) &segment_buf[0]))
+			u32 err;
+			if (err = disk_read_poll(drive_mask, disk_address_sector, num_sectors, (u32) &segment_buf[0]))
 			{
-				putnum(0,0,4,WHITE_TEXT);
+				putnum(0,0,err,WHITE_TEXT);
 				asm("hlt");
 			}
 
@@ -276,7 +277,6 @@ void __attribute__((stdcall)) stage_two(u32 kernel_info_physical_location, u32 g
 					ptr = (void*) physical_addresses[physical_address_index];
 					border_checker = 0;
 					physical_address_index++;
-					putnum(physical_address_index,0,physical_addresses[physical_address_index],WHITE_TEXT);
 				}
 				ptr[j] = segment_buf[j + start_offset];
 			}
@@ -288,7 +288,6 @@ void __attribute__((stdcall)) stage_two(u32 kernel_info_physical_location, u32 g
 	u32 stack_page = KERNEL_STACK_VIRTUAL_ADDRESS / FRAME_SIZE - 1; // minus one because the address the stack starts at is the first byte in the next page
 	if (root_pt[stack_page].metadata != PDE_UNINITIALIZED)
 	{
-		putnum(0,0,128,WHITE_TEXT);
 		asm("hlt");
 	}
 
@@ -304,7 +303,6 @@ void __attribute__((stdcall)) stage_two(u32 kernel_info_physical_location, u32 g
 
 	if (root_pt[FRAME_ZERO_VIRTUAL_ADDRESS / FRAME_SIZE].metadata != PDE_UNINITIALIZED)
 	{
-		putnum(0,0,129,WHITE_TEXT);
 		asm("hlt");
 	}
 	pde_init(&root_pt[FRAME_ZERO_VIRTUAL_ADDRESS / FRAME_SIZE], 0);
@@ -325,13 +323,12 @@ void __attribute__((stdcall)) stage_two(u32 kernel_info_physical_location, u32 g
 
 	if (!found)
 	{
-		putnum(0,0,7,WHITE_TEXT);
 		asm("hlt");
 	}
 
-	if (!disk_read_poll(stage_two_sectors + 1 + elf_sectors, 1, virt_equal_phys * FRAME_SIZE))
+	if (err = disk_read_poll(drive_mask, stage_two_sectors + 1 + elf_sectors, 1, virt_equal_phys * FRAME_SIZE))
 	{
-		putnum(0,0,8,WHITE_TEXT);
+		putnum(0,0,err,WHITE_TEXT);
 		asm("hlt");
 	}
 
@@ -350,7 +347,6 @@ void __attribute__((stdcall)) stage_two(u32 kernel_info_physical_location, u32 g
 
 	if (root_pt[KERNEL_INFO_VIRTUAL_ADDRESS / FRAME_SIZE].metadata != PDE_UNINITIALIZED)
 	{
-		putnum(0,0,KERNEL_INFO_VIRTUAL_ADDRESS / FRAME_SIZE,WHITE_TEXT);
 		asm("hlt");
 	}
 	pde_init(&root_pt[KERNEL_INFO_VIRTUAL_ADDRESS / FRAME_SIZE], kernel_info_physical_location / FRAME_SIZE);
@@ -358,7 +354,6 @@ void __attribute__((stdcall)) stage_two(u32 kernel_info_physical_location, u32 g
 
 	if (!found)
 	{
-		putnum(0,0,9,WHITE_TEXT);
 		asm("hlt");
 	}
 
