@@ -53,14 +53,6 @@ poll_read_end:
 	ret 0x10
 
 error:
-	mov edx, ATA_ERROR
-	in al, dx
-	push long 0xf
-	push long 68
-	push long 0
-	push long 0
-	call putnum
-	hlt
 	add esp, ebx
 	ret
 
@@ -123,6 +115,7 @@ request_disk_generic: ; ebx = pointer to the 4 argmuents, ecx = read or write
 	mov ebx, 0
 	jnz error
 	
+	mov eax, 0
 	ret
 
 disk_identify:
