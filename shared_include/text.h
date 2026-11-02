@@ -14,5 +14,6 @@
 void putc(u32 y, u32 x, u8 c, u8 attributes);
 void __attribute__((stdcall)) puts(u32 y, u32 x, u8* str, u8 attributes);
 void __attribute__((stdcall)) putnum(u32 y, u32 x, u32 num, u8 attributes);
+void clear_screen(void);
 
 #endif

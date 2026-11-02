@@ -6,7 +6,6 @@
 
 #define MEM_AVAILABLE 1
 
-// first entry in every page directory table must point to the frame that contains this information
 #define ROOT_PT_ADDRESS 0
 #define ROOT_PT_SIZE (sizeof(PageDirectoryEntry) * PAGING_TABLE_NUM_ENTRIES)
 #define GDT_ADDRESS (ROOT_PT_ADDRESS + ROOT_PT_SIZE)

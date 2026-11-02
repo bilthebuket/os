@@ -2,10 +2,11 @@
 #include "mem.h"
 #include "text.h"
 #include "disk.h"
-#include "paging.h"
-#include "process.h"
 #include "elf.h"
 #include "debug.h"
+
+// this is defined in process.h but i dont want to expose that header to the boot code
+#define ROOT_PROCESS 0
 
 __attribute__((used, section(".stage_two_entry")))
 void __attribute__((stdcall)) read_smap_init_ft_move_stack(u32 smap_addr, u16 smap_size, u32 stage_two_location, u16 stage_two_sectors, u32 gdt_location)
@@ -364,21 +365,21 @@ void __attribute__((stdcall)) stage_two(u32 kernel_info_physical_location, u32 g
 			u32 temp_gdtr,
 			u32 pt_location,
 			u32 perm_gdt_virtual_location,
-			u32 gdt_size,
+			u32 gdt_size_minus_one,
 			u32 virtual_stack,
-			u32 kernel_info_virtual_address,
 			u32 kernel_main,
-			u32 root_lba
+			u32 root_lba,
+			u32 drive_mask
 		) = (void*) (virt_equal_phys * FRAME_SIZE);
 	(*enable_paging_jump_to_kernel_main)
 		(
 			temp_gdtr,
 			kernel_info_physical_location + ROOT_PT_ADDRESS,
 			KERNEL_INFO_VIRTUAL_ADDRESS + GDT_ADDRESS,
-			GDT_SIZE,
+			GDT_SIZE - 1,
 			(stack_page + 1) * FRAME_SIZE,
-			KERNEL_INFO_VIRTUAL_ADDRESS,
 			header->entry_point,
-			stage_two_sectors + elf_sectors + 2
+			stage_two_sectors + elf_sectors + 2,
+			drive_mask
 		);
 }

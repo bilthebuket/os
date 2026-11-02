@@ -50,3 +50,14 @@ void __attribute__((stdcall)) putnum(u32 y, u32 x, u32 num, u8 attributes)
 		putc(y, x + j, str[j], attributes);
 	}
 }
+
+void clear_screen(void)
+{
+	for (u32 i = 0; i < SCREEN_HEIGHT; i++)
+	{
+		for (u32 j = 0; j < SCREEN_WIDTH; j++)
+		{
+			putc(i, j, ' ', WHITE_TEXT);
+		}
+	}
+}

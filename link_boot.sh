@@ -13,14 +13,16 @@ for file in kernel_src/*.c; do
 	gcc -g -m32 -ffreestanding -fno-pie -fno-stack-protector -fno-asynchronous-unwind-tables -fno-builtin -Ishared_include -Ikernel_include -c "$file" -o "$(basename "${file%.c}.o")"
 done
 
-nasm -f elf32 kernel_src/interrupts.asm -o interrupts_asm.o
 nasm -f elf32 shared_src/disk.asm -o disk_asm.o
 nasm -f elf32 shared_src/debug.asm -o debug_asm.o
 nasm -f elf32 shared_src/mem.asm -o mem_asm.o
 nasm -f elf32 shared_src/paging.asm -o paging_asm.o
 
+nasm -f elf32 kernel_src/interrupts.asm -o interrupts_asm.o
+nasm -f elf32 kernel_src/interrupt_driven_disk.asm -o interrupt_driven_disk_asm.o
+
 ld -m elf_i386 -T boot2.ld boot2.o text.o disk_asm.o paging.o elf.o debug_asm.o mem_asm.o paging_asm.o -o boot2.elf
-ld -m elf_i386 -T kernel.ld text.o main.o paging_asm.o global.o file.o -o main.elf
+ld -m elf_i386 -T kernel.ld text.o main.o paging_asm.o global.o file.o interrupts.o interrupt_driven_disk_asm.o debug_asm.o interrupts_asm.o -o main.elf
 
 objcopy -O binary boot2.elf boot2.bin
 
@@ -49,3 +51,4 @@ rm main.o
 rm mem_asm.o
 rm paging_asm.o
 rm file.o
+rm interrupt_driven_disk_asm.o

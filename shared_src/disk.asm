@@ -7,8 +7,8 @@ extern puts
 extern putnum
 
 global disk_init
-global ata_enable_interrupts
 global disk_read_poll
+global wait_for_busy_disk_alternate
 
 disk_read_poll:
 	push ebx
@@ -209,6 +209,11 @@ read_data:
 	pop ebx
 	ret
 
+wait_for_busy_disk_alternate:
+	mov cx, 0x0
+	mov dx, ATA_CONTROL_ALT_STATUS
+	jmp wait_loop
+
 wait_for_busy_disk:
 	mov cx, 0x0
 	mov dx, ATA_COMMAND_STATUS
@@ -241,10 +246,4 @@ poll_alternate:
 	add cx, 0x1
 	cmp cx, DISK_SELECT_WARMUP
 	jb poll_alternate
-	ret
-
-ata_enable_interrupts:
-	mov edx, ATA_CONTROL_ALT_STATUS
-	mov al, 0x0
-	out dx, al
 	ret
