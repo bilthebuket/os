@@ -3,6 +3,4 @@
 
 #include "def.h"
 
-extern u32 kernel_info_location;
-
 #endif

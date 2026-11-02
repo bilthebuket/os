@@ -28,5 +28,4 @@ pop cx
 pop ebx
 
 push edi
-push ebp
 call esi

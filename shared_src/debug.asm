@@ -14,7 +14,6 @@ display_eip:
 	push eax
 	push long 0
 	push long 0
-	push long 0
 	call putnum
 	ret
 	
