@@ -5,8 +5,8 @@ extern void default_isr(void);
 extern void disk_isr(void);
 extern void slave_isr_handle_spurious(void);
 extern void __attribute__((stdcall)) call_lidt(u32);
-extern void pic_init(void);
-extern void ata_enable_interrupts(void);
+extern void __attribute__((stdcall)) pic_init(void);
+extern void __attribute__((stdcall)) ata_enable_interrupts(void);
 
 void setup_interrupts(u32 idt_address)
 {
