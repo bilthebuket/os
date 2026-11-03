@@ -108,14 +108,15 @@ fix_collision_two:
 
 exit_find_avail_memory:
 
+	xor eax, eax
 	; setting up stack for jumping to stage 2
 	; gcc expects all args to be padded to 4 bytes each
 	push long gdt
-	push word 0x0 ; padding
-	push word [dap + 0x2]
+	mov word ax, [dap + 0x2]
+	push eax
 	push ebp
-	push word 0x0 ; padding
-	push word [smap_size]
+	mov word ax, [smap_size]
+	push eax
 	push long smap
 	push long 0x0 ; push garbage address because gcc expects stage2 to be entered as a call and not a jmp
 
@@ -146,9 +147,6 @@ exit_find_avail_memory:
 	mov dl, [boot_drive]
 	int 0x13
 	jc error
-
-	mov eax, [esp + 0xC]
-	mov [STAGE2_LOCATION], eax
 
 	; mask pic
 	mov dx, 0x21

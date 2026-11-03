@@ -9,7 +9,7 @@
 #define ROOT_PROCESS 0
 
 __attribute__((used, section(".stage_two_entry")))
-void __attribute__((stdcall)) read_smap_init_ft_move_stack(u32 smap_addr, u16 smap_size, u32 stage_two_location, u16 stage_two_sectors, u32 gdt_location)
+void __attribute__((stdcall)) read_smap_init_ft_move_stack(u32 smap_addr, u32 smap_size, u32 stage_two_location, u32 stage_two_sectors, u32 gdt_location)
 {
 	putnum(0, MAX_DIGITS, 0, WHITE_TEXT);
 
