@@ -3,4 +3,6 @@
 
 #include "def.h"
 
+extern u32 drive_mask;
+
 #endif

@@ -8,6 +8,7 @@ extern putnum
 
 global disk_init
 global disk_read_poll
+global disk_write_poll
 global wait_for_busy_disk_alternate
 
 disk_read_poll:
@@ -20,7 +21,7 @@ disk_read_poll:
 	mov cl, ATA_READ
 	call request_disk_generic
 	test eax, 0xFFFFFFFF
-	jnz poll_read_end
+	jnz poll_end
 
 	cld
 	mov edi, [esp + 0x20]
@@ -33,7 +34,7 @@ poll_read_loop:
 	in al, dx
 	test al, 0x8
 	mov eax, ERROR_DATA_NOT_READY
-	jz poll_read_end
+	jz poll_end
 
 	mov ecx, 0x100
 	mov edx, ATA_DATA
@@ -42,15 +43,54 @@ poll_read_loop:
 	sub ebx, 1
 	test ebx, ebx
 	mov eax, 0
-	jz poll_read_end
+	jz poll_end
 	jmp poll_read_loop
 
-poll_read_end:
+poll_end:
 	pop esi
 	pop ebp
 	pop edi
 	pop ebx
 	ret 0x10
+
+disk_write_poll:
+	push ebx
+	push edi
+	push ebp
+	push esi
+
+	lea ebx, [esp + 0x14]
+	mov cl, ATA_WRITE
+	call request_disk_generic
+	test eax, 0xFFFFFFFF
+	jnz poll_end
+
+	mov edi, [esp + 0x20]
+	mov ebx, [esp + 0x1C]
+
+poll_write_loop:
+	call wait_for_busy_disk
+
+	mov edx, ATA_COMMAND_STATUS
+	in al, dx
+	test al, 0x8
+	mov eax, ERROR_DATA_NOT_READY
+	jz poll_end
+
+	mov ecx, 0x100
+	mov edx, ATA_DATA
+write_data_loop:
+	mov ax, [edi]
+	out dx, ax
+	sub ecx, 1
+	test ecx, ecx
+	jnz write_data_loop
+
+	sub ebx, 1
+	test ebx, ebx
+	mov eax, 0
+	jz poll_end
+	jmp poll_write_loop
 
 error:
 	add esp, ebx

@@ -52,3 +52,4 @@ rm mem_asm.o
 rm paging_asm.o
 rm file.o
 rm interrupt_driven_disk_asm.o
+rm global.o
