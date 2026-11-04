@@ -13,7 +13,11 @@ void _start(u32 root_lba, u32 drive_mask)
 	puts(0,0,"reached kernel main",WHITE_TEXT);
 	setup_interrupts(KERNEL_INFO_VIRTUAL_ADDRESS + IDT_ADDRESS);
 	u8 buf[SECTOR_SIZE * 2];
-	if (disk_request_read(drive_mask, 0, 2, (u32) &buf[0]))
+	for (u32 i = 0; i < SECTOR_SIZE * 2; i++)
+	{
+		buf[i] = 'A';
+	}
+	if (disk_request_write(drive_mask, 0, 2, (u32) &buf[0]))
 	{
 		puts(0,0,(u8*)"shit failed",WHITE_TEXT);
 	}

@@ -57,12 +57,6 @@ disk_request_read:
 	push ebp
 	push esi
 
-	lea ebx, [esp + 0x14]
-	mov cl, ATA_READ
-	call request_disk_generic
-	test eax, 0xFFFFFFFF
-	jnz request_end
-
 	mov long eax, [esp + 0x20]
 	mov long [buf], eax
 	mov long eax, [esp + 0x1C]
@@ -72,6 +66,12 @@ disk_request_read:
 
 	push disk_read
 	call prep_disk_isr
+
+	lea ebx, [esp + 0x14]
+	mov cl, ATA_READ
+	call request_disk_generic
+	test eax, 0xFFFFFFFF
+	jnz request_end
 
 	mov eax, 0
 
@@ -106,13 +106,13 @@ disk_request_write:
 	mov long eax, [esp + 0x14]
 	mov byte [drive_mask], al
 
+	push disk_write
+	call prep_disk_isr
+
 	call disk_write
 	mov long eax, [esp + 0x1C]
 	sub eax, 1
 	mov long [num_sectors], eax
-
-	push disk_write
-	call prep_disk_isr
 	
 	mov eax, 0
 	jmp request_end
