@@ -5,22 +5,56 @@
 
 File root_directory;
 
+void file_copy(File* to, File* from)
+{
+	to->name = from->name;
+	to->num_bytes = from->num_bytes;
+	to->start_sector = from->start_sector;
+	to->start_offset = from->start_offset;
+	to->flags = from->flags;
+}
+
 u8 file_open(File* to_open, File* working_directory, u8* name)
 {
-	u8 buf[SECTOR_SIZE];
-	u32 err;
-	if (err = disk_read_poll(drive_mask, working_directory->header_sector, 1, &buf[0]))
-	{
-		return (u8) err;
-	}
+	FileNode next;
+	next.sector = working_directory->start_sector;
+	next.offset = working_drecitory->start_offset;
+	next.num_bytes = working_directory->num_bytes;
+	next.flags = working_directory.flags;
 
-	FileHead dir_head = *(FileHead*) &buf[working_directory->header_offset];
-	if (dir_head.start_sector !=
+	while (1)
+	{
+		u32 buf_size = get_padded_buf_size(next.offset, next.num_bytes);
+		u8 buf[buf_size];
+		u32 err;
+		if (err = disk_read_poll(drive_mask, next.sector, buf_size / SECTOR_SIZE, buf))
+		{
+			return err;
+		}
+		File* files = &buf[sizeof(FileNode)];
+		for (u32 i = 0; i < (num_bytes - sizeof(FileNode)) / sizeof(File); i++)
+		{
+			if (!strcmp(files[i].name, name))
+			{
+				found = 1;
+				file_copy(to_open, &files[i]);
+				return 0;
+			}
+		}
+
+		next = *(FileNode*) &buf[0];
+		if (next.flags & LAST_CHUNK_FLAG)
+		{
+			return FILE_NOT_FOUND;
+		}
+	}
 }
 
 u8 file_write(File* f, u8* data, u32 data_size)
 {
-	return 0;
+	while (1)
+	{
+
 }
 
 u8 file_read(File* f, u8* buf, u32 num_bytes)

@@ -3,33 +3,29 @@
 
 #include "def.h"
 
-#define FILE 0
-#define DIRECTORY 1
+#define DIRECTORY_FLAG 1
+#define LAST_CHUNK_FLAG (1 << 1)
 
-typedef struct FileHead
+#define FILE_NOT_FOUND 1
+
+u8 sectors[DISK_NUM_SECTORS];
+
+typedef struct
 {
 	u8* name;
 	u32 start_sector;
+	u32 num_bytes;
 	u16 start_offset;
-	u8 type;
-} FileHead;
+	u8 flags;
+} File;
 
-typedef struct FileNode
+typedef struct
 {
 	u32 num_bytes;
-	u32 next_sector;
-	u16 next_offset;
+	u32 sector;
+	u16 offset;
+	u8 flags;
 } FileNode;
-
-typedef struct File
-{
-	// head = where we are reading/writing
-	// header = FileHead
-	u32 head_sector;
-	u32 header_sector;
-	u16 header_offset;
-	u16 head_offset;
-} File;
 
 extern File root_directory;
 
