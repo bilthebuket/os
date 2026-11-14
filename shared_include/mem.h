@@ -2,7 +2,7 @@
 #define MEM_H
 
 #include <assert.h>
-#include "paging.h"
+#include "shared_include/paging.h"
 
 #define MEM_AVAILABLE 1
 
@@ -17,6 +17,8 @@
 #define FT_SIZE (sizeof(FrameTableEntry) * FT_NUM_ENTRIES)
 #define FRAME_AVAILABILITY_TABLE_ADDRESS (FT_ADDRESS + FT_SIZE)
 #define FRAME_AVAILABILITY_TABLE_SIZE 128
+#define DISK_SECTORS_ADDRESS (FRAME_AVAILABILITY_TABLE_ADDRESS + FRAME_AVAILABILITY_TABLE_SIZE)
+#define DISK_SECTORS_SIZE (sizeof(u32))
 
 typedef struct
 {

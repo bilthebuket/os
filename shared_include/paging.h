@@ -1,7 +1,7 @@
 #ifndef PAGING_H
 #define PAGING_H
 
-#include "def.h"
+#include "shared_include/def.h"
 
 #define PAGE_PRESENT 1
 #define PAGE_READ_WRITE (1 << 1)

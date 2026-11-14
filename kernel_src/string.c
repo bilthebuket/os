@@ -1,4 +1,4 @@
-#include "string.h"
+#include "kernel_include/string.h"
 
 int strcmp(const u8* one, const u8* two)
 {

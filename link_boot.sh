@@ -2,27 +2,27 @@ nasm -f bin boot_src/boot1.asm -o boot1.bin
 nasm -f bin boot_src/transition.asm -o transition.bin
 
 for file in boot_src/*.c; do
-	gcc -g -m32 -ffreestanding -fno-pie -fno-stack-protector -fno-asynchronous-unwind-tables -fno-builtin -Ishared_include -Iboot_include -c "$file" -o "$(basename "${file%.c}.o")"
+	gcc -g -m32 -ffreestanding -fno-pie -fno-stack-protector -fno-asynchronous-unwind-tables -fno-builtin -c "$file" -o "$(basename "${file%.c}_b.o")"
 done
 
 for file in shared_src/*.c; do
-	gcc -g -m32 -ffreestanding -fno-pie -fno-stack-protector -fno-asynchronous-unwind-tables -fno-builtin -Ishared_include -c "$file" -o "$(basename "${file%.c}.o")"
+	gcc -g -m32 -ffreestanding -fno-pie -fno-stack-protector -fno-asynchronous-unwind-tables -fno-builtin -c "$file" -o "$(basename "${file%.c}_s.o")"
 done
 
 for file in kernel_src/*.c; do
-	gcc -g -m32 -ffreestanding -fno-pie -fno-stack-protector -fno-asynchronous-unwind-tables -fno-builtin -Ishared_include -Ikernel_include -c "$file" -o "$(basename "${file%.c}.o")"
+	gcc -g -m32 -ffreestanding -fno-pie -fno-stack-protector -fno-asynchronous-unwind-tables -fno-builtin -c "$file" -o "$(basename "${file%.c}_k.o")"
 done
 
-nasm -f elf32 shared_src/disk.asm -o disk_asm.o
+nasm -f elf32 shared_src/disk.asm -o disk_asm_s.o
 nasm -f elf32 shared_src/debug.asm -o debug_asm.o
 nasm -f elf32 shared_src/mem.asm -o mem_asm.o
 nasm -f elf32 shared_src/paging.asm -o paging_asm.o
 
 nasm -f elf32 kernel_src/interrupts.asm -o interrupts_asm.o
-nasm -f elf32 kernel_src/interrupt_driven_disk.asm -o interrupt_driven_disk_asm.o
+nasm -f elf32 kernel_src/disk.asm -o disk_asm_k.o
 
-ld -m elf_i386 -T boot2.ld boot2.o text.o disk_asm.o paging.o elf.o debug_asm.o mem_asm.o paging_asm.o -o boot2.elf
-ld -m elf_i386 -T kernel.ld text.o main.o paging_asm.o global.o file.o interrupts.o interrupt_driven_disk_asm.o debug_asm.o interrupts_asm.o -o main.elf
+ld -m elf_i386 -T boot2.ld boot2_b.o text_s.o disk_asm_s.o paging_s.o elf_s.o debug_asm.o mem_asm.o paging_asm.o disk_s.o -o boot2.elf
+ld -m elf_i386 -T kernel.ld text_s.o main_k.o paging_asm.o global_k.o file_k.o interrupts_k.o disk_asm_k.o disk_asm_s.o debug_asm.o interrupts_asm.o disk_k.o disk_s.o -o main.elf
 
 objcopy -O binary boot2.elf boot2.bin
 
@@ -38,18 +38,20 @@ rm boot1.bin
 rm boot2.bin
 rm boot2.elf
 rm debug_asm.o
-rm boot2.o
-rm text.o
-rm interrupts.o
+rm boot2_b.o
+rm text_s.o
+rm interrupts_kernel.o
 rm interrupts_asm.o
-rm disk_asm.o
-rm elf.o
-rm paging.o
+rm elf_s.o
+rm paging_s.o
 rm transition.bin
 #rm main.elf
-rm main.o
+rm main_k.o
 rm mem_asm.o
 rm paging_asm.o
-rm file.o
-rm interrupt_driven_disk_asm.o
-rm global.o
+rm file_k.o
+rm disk_asm_k.o
+rm disk_asm_s.o
+rm global_k.o
+rm disk_k.o
+rm disk_s.o

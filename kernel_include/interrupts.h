@@ -1,8 +1,8 @@
 #ifndef INTERRUPTS_H
 #define INTERRUPTS_H
 
-#include "def.h"
-#include "mem.h"
+#include "shared_include/def.h"
+#include "shared_include/mem.h"
 
 typedef struct
 {

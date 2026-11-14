@@ -1,7 +1,7 @@
-#include "file.h"
-#include "def.h"
-#include "disk.h"
-#include "stirng.h"
+#include "kernel_include/file.h"
+#include "shared_include/def.h"
+#include "shared_include/disk.h"
+#include "kernel_include/string.h"
 
 File root_directory;
 

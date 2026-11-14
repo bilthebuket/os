@@ -238,8 +238,20 @@ found_disk:
 read_data:
 	in ax, dx
 	add cx, 0x1
-	cmp cx, 0x100
+	cmp cx, LBA_SECTORS_FIRST_WORD
 	jb read_data
+
+	mov ebx, [esp + 22]
+	mov [ebx], ax
+	in ax, dx
+	mov [ebx + 2], ax
+	add cx, 1
+	
+read_data2:
+	in ax, dx
+	add cx, 1
+	cmp cx, SECTOR_SIZE_WORDS
+	jb read_data2
 
 	pop cx
 	mov eax, ecx
@@ -247,7 +259,7 @@ read_data:
 	pop edi
 	pop esi
 	pop ebx
-	ret
+	ret 4
 
 wait_for_busy_disk_alternate:
 	mov cx, 0x0

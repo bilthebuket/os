@@ -1,5 +1,5 @@
-#include "elf.h"
-#include "text.h"
+#include "shared_include/elf.h"
+#include "shared_include/text.h"
 
 u32 elf_read_header(ELFHeader* file, u32* size)
 {

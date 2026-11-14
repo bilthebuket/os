@@ -1,5 +1,5 @@
-#include "paging.h"
-#include "mem.h"
+#include "shared_include/paging.h"
+#include "shared_include/mem.h"
 
 void pde_init(PageDirectoryEntry* pde, u16 address)
 {

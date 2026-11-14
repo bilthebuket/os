@@ -1,7 +1,7 @@
 #ifndef FILE_H
 #define FILE_H
 
-#include "def.h"
+#include "shared_include/def.h"
 
 #define DIRECTORY_FLAG 1
 #define LAST_CHUNK_FLAG (1 << 1)

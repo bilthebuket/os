@@ -1,7 +1,8 @@
 #ifndef ELF_H
 #define ELF_H
 
-#include "def.h"
+#include "shared_include/def.h"
+
 #define ELF_SIGNATURE0 0x7F
 #define ELF_SIGNATURE1 0x45
 #define ELF_SIGNATURE2 0x4C

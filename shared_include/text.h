@@ -1,7 +1,7 @@
 #ifndef TEXT_H
 #define TEXT_H
 
-#include "def.h"
+#include "shared_include/def.h"
 
 #define SCREEN_WIDTH 80
 #define SCREEN_HEIGHT 25

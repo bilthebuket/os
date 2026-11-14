@@ -1,7 +1,7 @@
-#include "text.h"
-#include "def.h"
-#include "paging.h"
-#include "mem.h"
+#include "shared_include/text.h"
+#include "shared_include/def.h"
+#include "shared_include/paging.h"
+#include "shared_include/mem.h"
 
 #define BYTES_PER_CELL 2
 

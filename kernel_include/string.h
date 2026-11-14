@@ -1,6 +1,8 @@
 #ifndef STRING_H
 #define STRING_H
 
+#include "shared_include/def.h"
+
 #define STR2_BIGGER 1
 #define STR1_BIGGER 2
 #define SAME_LENGTH_UNEQUAL 3

@@ -1,9 +1,9 @@
-#include "def.h"
-#include "mem.h"
-#include "text.h"
-#include "disk.h"
-#include "elf.h"
-#include "debug.h"
+#include "shared_include/def.h"
+#include "shared_include/mem.h"
+#include "shared_include/text.h"
+#include "shared_include/disk.h"
+#include "shared_include/elf.h"
+#include "shared_include/debug.h"
 
 // this is defined in process.h but i dont want to expose that header to the boot code
 #define ROOT_PROCESS 0
@@ -160,7 +160,7 @@ void __attribute__((stdcall)) read_smap_init_ft_move_stack(u32 smap_addr, u32 sm
 		root_pt[i].metadata = PDE_UNINITIALIZED;
 	}
 
-	u32 drive_mask = disk_init();
+	u32 drive_mask = disk_init(kernel_info_physical_location + DISK_SECTORS_ADDRESS);
 
 	u32 stack_frame = 0;
 	found = 0;

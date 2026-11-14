@@ -1,5 +1,5 @@
-#include "interrupts.h"
-#include "text.h"
+#include "kernel_include/interrupts.h"
+#include "shared_include/text.h"
 
 extern void default_isr(void);
 extern void disk_isr(void);

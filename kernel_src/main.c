@@ -1,9 +1,9 @@
-#include "text.h"
-#include "global.h"
-#include "mem.h"
-#include "interrupts.h"
-#include "interrupt_driven_disk.h"
-#include "disk.h"
+#include "shared_include/text.h"
+#include "kernel_include/global.h"
+#include "shared_include/mem.h"
+#include "kernel_include/interrupts.h"
+#include "kernel_include/disk.h"
+#include "shared_include/disk.h"
 
 void _start(u32 root_lba, u32 __drive_mask)
 {
