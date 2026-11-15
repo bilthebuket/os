@@ -8,26 +8,24 @@ File root_directory;
 void file_copy(File* to, File* from)
 {
 	to->name = from->name;
-	to->num_bytes = from->num_bytes;
-	to->start_sector = from->start_sector;
-	to->start_offset = from->start_offset;
+	to->start_lba = from->start_lba;
+	to->sectors = from->sectors;
 	to->flags = from->flags;
 }
 
 u8 file_open(File* to_open, File* working_directory, u8* name)
 {
-	FileNode next;
-	next.sector = working_directory->start_sector;
-	next.offset = working_drecitory->start_offset;
-	next.num_bytes = working_directory->num_bytes;
-	next.flags = working_directory.flags;
+	FileNode node;
+	node.next_lba = working_directory->start_lba;
+	node.next_sectors = working_directory->sectors;
+	node.flags = working_directory->flags;
 
 	while (1)
 	{
-		u32 buf_size = get_padded_buf_size(next.offset, next.num_bytes);
+		u32 buf_size = node.next_sectors * SECTOR_SIZE;
 		u8 buf[buf_size];
 		u32 err;
-		if (err = disk_read_poll(drive_mask, next.sector, buf_size / SECTOR_SIZE, buf))
+		if (err = disk_read_poll(drive_mask, node.next_lba, buf_size / SECTOR_SIZE, buf))
 		{
 			return err;
 		}
@@ -42,8 +40,8 @@ u8 file_open(File* to_open, File* working_directory, u8* name)
 			}
 		}
 
-		next = *(FileNode*) &buf[0];
-		if (next.flags & LAST_CHUNK_FLAG)
+		node = *(FileNode*) &buf[0];
+		if (node.flags & LAST_CHUNK_FLAG)
 		{
 			return FILE_NOT_FOUND;
 		}
@@ -52,9 +50,47 @@ u8 file_open(File* to_open, File* working_directory, u8* name)
 
 u8 file_write(File* f, u8* data, u32 data_size)
 {
+	FileNode node;
+	node.next_lba = f->start_lba;
+	node.next_sectors = f->sectors;
+	node.flags = f->flags;
+
 	while (1)
 	{
+		u32 buf_size = node.next_sectors * SECTOR_SIZE;
+		u8 buf[buf_size];
+		u32 err;
+		if (err = disk_read_poll(drive_mask, node.next_lba, buf_size / SECTOR_SIZE, buf))
+		{
+			return err;
+		}
+		
+		for (u32 i = sizeof(FileNode); i < buf_size && data_size > 0; i++, data_size--, data = &data[1])
+		{
+			buf[i] = data[0];
+		}
 
+		node = *(FileNode*) &buf[0];
+		if (node.flags & LAST_CHUNK_FLAG)
+		{
+			if (data_size > 0)
+			{
+
+			}
+			break;
+		}
+		else
+		{
+			if (data_size > 0)
+			{
+
+			}
+			else
+			{
+
+			}
+		}
+	}
 }
 
 u8 file_read(File* f, u8* buf, u32 num_bytes)

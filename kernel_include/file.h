@@ -13,17 +13,16 @@ u8 sectors[DISK_NUM_SECTORS];
 typedef struct
 {
 	u8* name;
-	u32 start_sector;
-	u32 num_bytes;
-	u16 start_offset;
+	u32 start_lba;
+	u32 sectors;
 	u8 flags;
 } File;
 
 typedef struct
 {
 	u32 num_bytes;
-	u32 sector;
-	u16 offset;
+	u32 next_lba;
+	u32 next_sectors;
 	u8 flags;
 } FileNode;
 
