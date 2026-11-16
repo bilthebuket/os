@@ -7,6 +7,8 @@
 #define LAST_CHUNK_FLAG (1 << 1)
 
 #define FILE_NOT_FOUND 1
+#define DIRECTORY_ERROR 2
+#define DISK_FULL 3
 
 u8 sectors[DISK_NUM_SECTORS];
 
@@ -34,7 +36,7 @@ u8 file_read(File* f, u8* buf, u32 num_bytes);
 u8 file_move_head(File* f, u32 location);
 u32 file_get_head(File* f);
 u32 file_get_size(File* f);
-u8 make_directory(File* parent_directory, u8* name);
+u8 file_create(File* directory, u8* name, u8 flags);
 u8 init_root_directory(u32 lba);
 
 #endif

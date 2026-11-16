@@ -33,7 +33,11 @@ truncate -s "$rounded" main.elf
 truncate -s 8192 boot2.bin
 truncate -s 512 transition.bin
 
-cat boot1.bin boot2.bin main.elf transition.bin > os.img
+size=$(($(stat -c %s boot1.bin) + $(stat -c %s boot2.bin) + $(stat -c %s main.elf) + $(stat -c %s transition.bin) + 10000000))
+echo "" > filesystem.bin
+truncate -s "$size" filesystem.bin
+
+cat boot1.bin boot2.bin main.elf transition.bin filesystem.bin > os.img
 rm boot1.bin
 rm boot2.bin
 rm boot2.elf
@@ -55,3 +59,4 @@ rm disk_asm_s.o
 rm global_k.o
 rm disk_k.o
 rm disk_s.o
+rm filesystem.bin

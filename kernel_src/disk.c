@@ -11,6 +11,7 @@ u32 get_num_drive_sectors(void)
 	return *(u32*) DISK_SECTORS_ADDRESS;
 }
 
+// for now we only look for one chunk of sectors that can hold all the bytes, rather than breaking the bytes into chunks of sectors
 u32 find_available_sectors(u32 num_bytes)
 {
 	u32 sector_table_lba = get_sector_table_lba();
