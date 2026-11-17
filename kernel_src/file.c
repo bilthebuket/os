@@ -164,9 +164,7 @@ u8 file_read(File* f, u8* buf, u32 num_bytes)
 		{
 			return err;
 		}
-<<<<<<< HEAD
-		// need to finish this function
-=======
+
 		for (u32 i = sizeof(FileNode); i < node->next_sectors * SECTOR_SIZE && num_bytes > 0 && i - sizeof(FileNode) < node->num_bytes; i++, num_bytes--, buf = &buf[1])
 		{
 			buf[0] = buf2[i];
@@ -179,7 +177,6 @@ u8 file_read(File* f, u8* buf, u32 num_bytes)
 		{
 			return 0;
 		}
->>>>>>> 10f92b96b3666bf5092d07c841350ec8e847187f
 	}
 }
 
