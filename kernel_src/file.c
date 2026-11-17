@@ -2,6 +2,8 @@
 #include "shared_include/def.h"
 #include "shared_include/disk.h"
 #include "kernel_include/string.h"
+#include "kernel_include/global.h"
+#include "kernel_include/disk.h"
 
 File root_directory;
 
@@ -30,22 +32,21 @@ u8 file_open(File* to_open, File* working_directory, u8* name)
 		u32 buf_size = node.next_sectors * SECTOR_SIZE;
 		u8 buf[buf_size];
 		u32 err;
-		if (err = disk_read_poll(drive_mask, node.next_lba, buf_size / SECTOR_SIZE, buf))
+		if (err = disk_read_poll(drive_mask, node.next_lba, buf_size / SECTOR_SIZE, (u32) buf))
 		{
 			return err;
 		}
-		File* files = &buf[sizeof(FileNode)];
-		for (u32 i = 0; i < (num_bytes - sizeof(FileNode)) / sizeof(File); i++)
+		File* files = (File*) &buf[sizeof(FileNode)];
+		node = *(FileNode*) &buf[0];
+		for (u32 i = 0; i < (node.num_bytes - sizeof(FileNode)) / sizeof(File); i++)
 		{
 			if (!strcmp(files[i].name, name))
 			{
-				found = 1;
 				file_copy(to_open, &files[i]);
 				return 0;
 			}
 		}
 
-		node = *(FileNode*) &buf[0];
 		if (node.flags & LAST_CHUNK_FLAG)
 		{
 			return FILE_NOT_FOUND;
@@ -68,7 +69,7 @@ u8 file_write(File* f, u8* data, u32 data_size)
 		u32 sectors = buf_size / SECTOR_SIZE;
 		u8 buf[buf_size];
 		u32 err;
-		if (err = disk_read_poll(drive_mask, lba, sectors, buf))
+		if (err = disk_read_poll(drive_mask, lba, sectors, (u32) buf))
 		{
 			return err;
 		}
@@ -99,14 +100,14 @@ u8 file_write(File* f, u8* data, u32 data_size)
 				{
 					buf2[i] = data[i - sizeof(FileNode)];
 				}
-				node2 = (FileNode*) &buf2[0];
+				FileNode* node2 = (FileNode*) &buf2[0];
 				node2->flags = LAST_CHUNK_FLAG;
 				node->num_bytes = data_size;
-				if (err = disk_write_poll(drive_mask, node->next_lba, node->next_sectors, buf2))
+				if (err = disk_write_poll(drive_mask, node->next_lba, node->next_sectors, (u32) buf2))
 				{
 					return err;
 				}
-				if (err = disk_write_poll(drive_mask, lba, sectors, buf))
+				if (err = disk_write_poll(drive_mask, lba, sectors, (u32) buf))
 				{
 					return err;
 				}
@@ -123,22 +124,22 @@ u8 file_write(File* f, u8* data, u32 data_size)
 				while (1)
 				{
 					u8 buf2[SECTOR_SIZE];
-					if (err = disk_read_poll(drive_mask, node->next_lba, 1, buf2))
+					if (err = disk_read_poll(drive_mask, node->next_lba, 1, (u32) buf2))
 					{
 						return err;
 					}
 					free_sectors(node->next_lba, node->next_sectors);
 					node = (FileNode*) &buf[0];
-					if (node->flags & LAsT_CHUNK_FLAG)
+					if (node->flags & LAST_CHUNK_FLAG)
 					{
 						break;
 					}
 				}
-				return disk_write_poll(drive_mask, lba, sectors, buf);
+				return disk_write_poll(drive_mask, lba, sectors, (u32) buf);
 			}
 		}
 
-		if (err = disk_write_poll(drive_mask, lba, sectors, buf))
+		if (err = disk_write_poll(drive_mask, lba, sectors, (u32) buf))
 		{
 			return err;
 		}
@@ -157,11 +158,11 @@ u8 file_read(File* f, u8* buf, u32 num_bytes)
 	{
 		u32 err;
 		u8 buf2[node->next_sectors * SECTOR_SIZE];
-		if (err = disk_read_poll(drive_mask, node->next_lba, node->next_sectors, buf2))
+		if (err = disk_read_poll(drive_mask, node->next_lba, node->next_sectors, (u32) buf2))
 		{
 			return err;
 		}
-		for (u32 i = size
+		// need to finish this function
 	}
 }
 
@@ -187,8 +188,7 @@ u8 file_create(File* directory, u8* name, u8 flags)
 
 u8 init_root_directory(u32 lba)
 {
-	root_directory.head_sector = 0;
-	root_directory.header_sector = lba;
-	root_directory.header_offset = 0;
-	root_directory.head_offset = 0;
+	root_directory.start_lba = lba;
+	root_directory.sectors = 0; // this should instead be initialzed by reading the filenode at start_lba
+	root_directory.flags = DIRECTORY_FLAG;
 }

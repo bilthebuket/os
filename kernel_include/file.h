@@ -10,8 +10,6 @@
 #define DIRECTORY_ERROR 2
 #define DISK_FULL 3
 
-u8 sectors[DISK_NUM_SECTORS];
-
 typedef struct
 {
 	u8* name;

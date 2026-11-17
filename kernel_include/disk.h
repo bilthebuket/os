@@ -6,9 +6,13 @@
 extern __attribute__((stdcall)) u32 disk_request_read(u32 disk_mask, u32 logical_block_address, u32 num_sectors, u32 buf);
 extern __attribute__((stdcall)) u32 disk_request_write(u32 disk_mask, u32 logical_block_address, u32 num_sectors, u32 buf);
 
+extern u32 root_lba;
+
+void init_root_lba(u32 lba);
+
 // returns the lba of the first sector in a chain of available sectors big enough to fit num_bytes
 u32 find_available_sectors(u32 num_bytes);
 void free_sectors(u32 lba, u32 num_sectors);
-void reserve_sectors(u32 lba, u32 nun_sectors);
+void reserve_sectors(u32 lba, u32 num_sectors);
 
 #endif

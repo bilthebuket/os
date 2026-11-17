@@ -4,10 +4,12 @@
 #include "kernel_include/interrupts.h"
 #include "kernel_include/disk.h"
 #include "shared_include/disk.h"
+#include "kernel_include/file.h"
 
 void _start(u32 root_lba, u32 __drive_mask)
 {
 	drive_mask = __drive_mask;
+	init_root_lba(root_lba);
 	init_root_directory(root_lba);
 	clear_screen();
 	puts(0,0,"reached kernel main",WHITE_TEXT);

@@ -10,6 +10,7 @@ global disk_init
 global disk_read_poll
 global disk_write_poll
 global wait_for_busy_disk_alternate
+global request_disk_generic
 
 disk_read_poll:
 	push ebx

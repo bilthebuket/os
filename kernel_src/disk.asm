@@ -1,10 +1,10 @@
 bits 32
-%include "shared_src/disk.asm"
 %include "shared_src/constants.asm"
 
 section .text:
 
 extern prep_disk_isr
+extern request_disk_generic
 
 global ata_enable_interrupts
 global disk_request_read
