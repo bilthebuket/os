@@ -143,6 +143,8 @@ u8 file_write(File* f, u8* data, u32 data_size)
 		{
 			return err;
 		}
+		n = *node;
+		node = &n;
 	}
 }
 
@@ -162,7 +164,22 @@ u8 file_read(File* f, u8* buf, u32 num_bytes)
 		{
 			return err;
 		}
+<<<<<<< HEAD
 		// need to finish this function
+=======
+		for (u32 i = sizeof(FileNode); i < node->next_sectors * SECTOR_SIZE && num_bytes > 0 && i - sizeof(FileNode) < node->num_bytes; i++, num_bytes--, buf = &buf[1])
+		{
+			buf[0] = buf2[i];
+		}
+		if (num_bytes > 0 && !(node->flags & LAST_CHUNK_FLAG))
+		{
+			n = *(FileNode*) &buf2[0];
+		}
+		else
+		{
+			return 0;
+		}
+>>>>>>> 10f92b96b3666bf5092d07c841350ec8e847187f
 	}
 }
 
