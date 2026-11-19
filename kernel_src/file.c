@@ -36,9 +36,9 @@ u8 file_open(File* to_open, File* working_directory, u8* name)
 		{
 			return err;
 		}
-		File* files = (File*) &buf[sizeof(FileNode)];
-		node = *(FileNode*) &buf[0];
-		for (u32 i = 0; i < (node.num_bytes - sizeof(FileNode)) / sizeof(File); i++)
+		File* files = (File*) &buf[0];
+		node = *(FileNode*) &buf[buf_size - sizeof(FileNode)];
+		for (u32 i = 0; i < node.num_bytes / sizeof(File); i++)
 		{
 			if (!strcmp(files[i].name, name))
 			{
@@ -56,31 +56,49 @@ u8 file_open(File* to_open, File* working_directory, u8* name)
 
 u8 file_write(File* f, u8* data, u32 data_size)
 {
-	FileNode n;
-	FileNode* node;
-	node->next_lba = f->start_lba;
-	node->next_sectors = f->sectors;
-	node->flags = f->flags;
+	FileNode node;
+	node.next_lba = f->start_lba;
+	node.next_sectors = f->sectors;
+	node.flags = f->flags;
 
 	while (1)
 	{
-		u32 buf_size = node->next_sectors * SECTOR_SIZE;
-		u32 lba = node->next_lba;
-		u32 sectors = buf_size / SECTOR_SIZE;
-		u8 buf[buf_size];
+		u8 buf[SECTOR_SIZE];
 		u32 err;
-		if (err = disk_read_poll(drive_mask, lba, sectors, (u32) buf))
+		u32 lba = node.next_lba;
+		u32 sectors = node.sectors;
+		if (err = disk_read_poll(drive_mask, lba + sectors - 1, 1, (u32) buf))
 		{
 			return err;
 		}
-		
-		for (u32 i = sizeof(FileNode); i < buf_size && data_size > 0; i++, data_size--, data = &data[1])
+
+		FileNode* next = (FileNode*) &buf[SECTOR_SIZE - sizeof(FileNode)];
+
+		if (data_size < sectors * SECTOR_SIZE - sizeof(FileNode))
 		{
-			buf[i] = data[0];
+			if (err = disk_write_poll(drive_mask, lba, data_size / SECTOR_SIZE, (u32) data))
+			{
+				return err;
+			}
+			for (u32 i = 0; i < data_size % SECTOR_SIZE; i++)
+			{
+				buf[i] = data[(data_size / SECTOR_SIZE) * SECTOR_SIZE + i];
+			}
+			next->num_bytes = data_size;
+			next->flags |= LAST_CHUNK_FLAG;
+
+		}
+		else if (data_size > sectors * SECTOR_SIZE - sizeof(FileNode))
+		{
+			
+		}
+		else
+		{
+
 		}
 
-		node = (FileNode*) &buf[0];
-		if (node->flags & LAST_CHUNK_FLAG)
+		
+		if (next->flags & LAST_CHUNK_FLAG)
 		{
 			if (data_size > 0)
 			{
