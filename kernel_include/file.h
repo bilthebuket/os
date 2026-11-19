@@ -10,11 +10,13 @@
 #define DIRECTORY_ERROR 2
 #define DISK_FULL 3
 
+#define NAME_MAX_LENGTH 26
+
 typedef struct
 {
-	u8* name;
 	u32 start_lba;
 	u32 sectors;
+	u8 name[NAME_MAX_LENGTH + 1];
 	u8 flags;
 } File;
 

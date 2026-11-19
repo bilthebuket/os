@@ -9,7 +9,12 @@ File root_directory;
 
 void file_copy(File* to, File* from)
 {
-	to->name = from->name;
+	u32 i = 0;
+	for (; from->name[i] != '\0'; i++)
+	{
+		to->name[i] = from->name[i];
+	}
+	to->name[i] = '\0';
 	to->start_lba = from->start_lba;
 	to->sectors = from->sectors;
 	to->flags = from->flags;
@@ -93,7 +98,10 @@ u8 file_write(File* f, u8* data, u32 data_size)
 
 			if (sectors > data_size / SECTOR_SIZE + 1)
 			{
-				free_sectors(lba + data_size / SECTOR_SIZE + 1, sectors - (data_size / SECTOR_SIZE + 1));
+				if (err = free_sectors(lba + data_size / SECTOR_SIZE + 1, sectors - (data_size / SECTOR_SIZE + 1)))
+				{
+					return err;
+				}
 			}
 			node = *next;
 			do
@@ -104,7 +112,10 @@ u8 file_write(File* f, u8* data, u32 data_size)
 				{
 					return err;
 				}
-				free_sectors(lba, sectors);
+				if (err = free_sectors(lba, sectors))
+				{
+					return err;
+				}
 				node = *(FileNode*) &buf[SECTOR_SIZE - sizeof(FileNode)];
 			}
 			while (!(node.flags & LAST_CHUNK_FLAG));
@@ -128,7 +139,10 @@ u8 file_write(File* f, u8* data, u32 data_size)
 				next->flags &= ~LAST_CHUNK_FLAG;
 				next->next_lba = next_lba;
 				next->next_sectors = (data_size - amount_writing + sizeof(FileNode)) / SECTOR_SIZE;
-				reserve_sectors(next->next_lba, next->next_sectors);
+				if (err = reserve_sectors(next->next_lba, next->next_sectors))
+				{
+					return err;
+				}
 				if ((data_size - amount_writing + sizeof(FileNode)) % SECTOR_SIZE)
 				{
 					next->next_sectors++;
@@ -262,7 +276,61 @@ u32 file_get_size(File* f)
 
 u8 file_create(File* directory, u8* name, u8 flags)
 {
-	return 0;
+	FileNode node;
+	node.next_lba = directory->start_lba;
+	node.next_sectors = directory->sectors;
+	node.flags = directory->flags;
+
+	while (1)
+	{
+		u32 err;
+		u8 buf[SECTOR_SIZE];
+		if (err = disk_read_poll(drive_mask, node.next_lba + node.next_sectors - 1, 1, (u32) buf))
+		{
+			return err;
+		}
+
+		FileNode* next = (FileNode*) &buf[SECTOR_SIZE - sizeof(FileNode)];
+		if (next->num_bytes + sizeof(File) < node.next_sectors * SECTOR_SIZE - sizeof(FileNode))
+		{
+			u8 buf2[SECTOR_SIZE * 2];
+			if (err = disk_read_poll(drive_mask, node.next_lba + next->num_bytes / SECTOR_SIZE, 2, (u32) buf2))
+			{
+				return err;
+			}
+			File* to_create = (File*) &buf2[next->num_bytes % SECTOR_SIZE];
+			u32 i = 0;
+			for (; name[i] != '\0' && i < NAME_MAX_LENGTH; i++)
+			{
+				to_create->name[i] = name[i];
+			}
+			to_create->name[i] = '\0';
+			to_create->flags = flags;
+			to_create->sectors = 1;
+			if (!(to_create->start_lba = find_available_sectors(SECTOR_SIZE)))
+			{
+				return DISK_FULL;
+			}
+			if (err = reserve_sectors(to_create->start_lba, 1))
+			{
+				return err;
+			}
+			next->num_bytes += sizeof(File);
+			if (err = disk_write_poll(drive_mask, node.next_lba + next->num_bytes / SECTOR_SIZE, 2, (u32) buf2))
+			{
+				return err;
+			}
+			return 0;
+		}
+		else if (next->flags & LAST_CHUNK_FLAG)
+		{
+			return 0;
+		}
+		else
+		{
+			return 0;
+		}
+	}
 }
 
 u8 init_root_directory(u32 lba)

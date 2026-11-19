@@ -62,7 +62,7 @@ u32 find_available_sectors(u32 num_bytes)
 	}
 }
 
-void free_sectors(u32 lba, u32 num_sectors)
+u8 free_sectors(u32 lba, u32 num_sectors)
 {
 	u32 sector_table_lba = get_sector_table_lba();
 	u8 buf[SECTOR_SIZE];
@@ -71,11 +71,12 @@ void free_sectors(u32 lba, u32 num_sectors)
 		buf[i] = 0;
 	}
 	u32 sectors = get_num_drive_sectors();
+	u32 err;
 	for (u32 i = 0; i < num_sectors / (SECTOR_SIZE * 8); i++)
 	{
-		if (disk_write_poll(drive_mask, sector_table_lba + i, 1, (u32) buf))
+		if (err =  disk_write_poll(drive_mask, sector_table_lba + i, 1, (u32) buf))
 		{
-			return;
+			return err;
 		}
 	}
 	if (num_sectors % (SECTOR_SIZE * 8) && disk_read_poll(drive_mask, sector_table_lba + num_sectors / (SECTOR_SIZE * 8), 1, (u32) buf))
@@ -88,7 +89,7 @@ void free_sectors(u32 lba, u32 num_sectors)
 	}
 }
 
-void reserve_sectors(u32 lba, u32 num_sectors)
+u8 reserve_sectors(u32 lba, u32 num_sectors)
 {
 	u32 sector_table_lba = get_sector_table_lba();
 	u8 buf[SECTOR_SIZE];
@@ -97,11 +98,12 @@ void reserve_sectors(u32 lba, u32 num_sectors)
 		buf[i] = 0;
 	}
 	u32 sectors = get_num_drive_sectors();
+	u32 err;
 	for (u32 i = 0; i < num_sectors / (SECTOR_SIZE * 8); i++)
 	{
-		if (disk_write_poll(drive_mask, sector_table_lba + i, 1, (u32) buf))
+		if (err = disk_write_poll(drive_mask, sector_table_lba + i, 1, (u32) buf))
 		{
-			return;
+			return err;
 		}
 	}
 	if (num_sectors % (SECTOR_SIZE * 8) && disk_read_poll(drive_mask, sector_table_lba + num_sectors / (SECTOR_SIZE * 8), 1, (u32) buf))
@@ -112,4 +114,6 @@ void reserve_sectors(u32 lba, u32 num_sectors)
 		}
 		disk_write_poll(drive_mask, sector_table_lba + num_sectors / (SECTOR_SIZE * 8), 1, (u32) buf);
 	}
+
+	return 0;
 }
