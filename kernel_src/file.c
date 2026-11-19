@@ -66,7 +66,7 @@ u8 file_write(File* f, u8* data, u32 data_size)
 		u8 buf[SECTOR_SIZE];
 		u32 err;
 		u32 lba = node.next_lba;
-		u32 sectors = node.sectors;
+		u32 sectors = node.next_sectors;
 		if (err = disk_read_poll(drive_mask, lba + sectors - 1, 1, (u32) buf))
 		{
 			return err;
@@ -86,114 +86,161 @@ u8 file_write(File* f, u8* data, u32 data_size)
 			}
 			next->num_bytes = data_size;
 			next->flags |= LAST_CHUNK_FLAG;
+			if (err = disk_write_poll(drive_mask, lba + data_size / SECTOR_SIZE, 1, (u32) buf))
+			{
+				return err;
+			}
 
+			if (sectors > data_size / SECTOR_SIZE + 1)
+			{
+				free_sectors(lba + data_size / SECTOR_SIZE + 1, sectors - (data_size / SECTOR_SIZE + 1));
+			}
+			node = *next;
+			do
+			{
+				lba = node.next_lba;
+				sectors = node.next_sectors;
+				if (err = disk_read_poll(drive_mask, lba + sectors - 1, 1, (u32) buf))
+				{
+					return err;
+				}
+				free_sectors(lba, sectors);
+				node = *(FileNode*) &buf[SECTOR_SIZE - sizeof(FileNode)];
+			}
+			while (!(node.flags & LAST_CHUNK_FLAG));
+			return 0;
 		}
 		else if (data_size > sectors * SECTOR_SIZE - sizeof(FileNode))
 		{
-			
-		}
-		else
-		{
-
-		}
-
-		
-		if (next->flags & LAST_CHUNK_FLAG)
-		{
-			if (data_size > 0)
+			u32 amount_writing = sectors * SECTOR_SIZE - sizeof(FileNode);
+			next->num_bytes = amount_writing;
+			for (u32 i = 0; i < SECTOR_SIZE - sizeof(FileNode); i++)
 			{
-				node->next_lba = find_available_sectors(data_size + sizeof(FileNode));
-				if (!node->next_lba)
+				buf[i] = data[(sectors - 1) * SECTOR_SIZE + i];
+			}
+			if (next->flags & LAST_CHUNK_FLAG)
+			{
+				u32 next_lba = find_available_sectors(data_size - amount_writing + sizeof(FileNode));
+				if (!next_lba)
 				{
 					return DISK_FULL;
 				}
-				node->flags &= ~LAST_CHUNK_FLAG;
-				node->next_sectors = data_size / SECTOR_SIZE;
-				if (data_size % SECTOR_SIZE)
+				next->flags &= ~LAST_CHUNK_FLAG;
+				next->next_lba = next_lba;
+				next->next_sectors = (data_size - amount_writing + sizeof(FileNode)) / SECTOR_SIZE;
+				reserve_sectors(next->next_lba, next->next_sectors);
+				if ((data_size - amount_writing + sizeof(FileNode)) % SECTOR_SIZE)
 				{
-					node->next_sectors++;
+					next->next_sectors++;
 				}
-				u8 buf2[data_size + sizeof(FileNode)];
-				for (u32 i = sizeof(FileNode); i < data_size + sizeof(FileNode); i++)
-				{
-					buf2[i] = data[i - sizeof(FileNode)];
-				}
-				FileNode* node2 = (FileNode*) &buf2[0];
-				node2->flags = LAST_CHUNK_FLAG;
-				node->num_bytes = data_size;
-				if (err = disk_write_poll(drive_mask, node->next_lba, node->next_sectors, (u32) buf2))
+
+				if ((err = disk_write_poll(drive_mask, lba, sectors - 1, (u32) data)) ||
+				    (err = disk_write_poll(drive_mask, lba + sectors - 1, 1, (u32) buf)))
 				{
 					return err;
 				}
-				if (err = disk_write_poll(drive_mask, lba, sectors, (u32) buf))
+
+				node = *next;
+				data_size -= amount_writing;
+				data = &data[amount_writing];
+
+				for (u32 i = 0; i < data_size % SECTOR_SIZE; i++)
+				{
+					buf[i] = data[data_size - data_size % SECTOR_SIZE + i];
+				}
+				next = (FileNode*) &buf[SECTOR_SIZE - sizeof(FileNode)];
+				next->num_bytes = data_size;
+				next->flags = LAST_CHUNK_FLAG;
+
+				if ((err = disk_write_poll(drive_mask, next_lba, data_size / SECTOR_SIZE, (u32) data)) ||
+				    (err = disk_write_poll(drive_mask, next_lba + data_size / SECTOR_SIZE, 1, (u32) buf)))
 				{
 					return err;
 				}
-				reserve_sectors(lba, sectors);
 				return 0;
+			}
+			else
+			{
+				if ((err = disk_write_poll(drive_mask, lba, sectors - 1, (u32) data)) ||
+				    (err = disk_write_poll(drive_mask, lba + sectors - 1, 1, (u32) buf)))
+				{
+					return err;
+				}
+
+				node = *next;
+				data_size -= amount_writing;
+				data = &data[amount_writing];
 			}
 		}
 		else
 		{
-			if (data_size == 0)
+			u32 amount_writing = sectors * SECTOR_SIZE - sizeof(FileNode);
+			next->num_bytes = amount_writing;
+			for (u32 i = 0; i < SECTOR_SIZE - sizeof(FileNode); i++)
 			{
-				node->flags |= LAST_CHUNK_FLAG;
-				node->num_bytes = data_size;
-				while (1)
-				{
-					u8 buf2[SECTOR_SIZE];
-					if (err = disk_read_poll(drive_mask, node->next_lba, 1, (u32) buf2))
-					{
-						return err;
-					}
-					free_sectors(node->next_lba, node->next_sectors);
-					node = (FileNode*) &buf[0];
-					if (node->flags & LAST_CHUNK_FLAG)
-					{
-						break;
-					}
-				}
-				return disk_write_poll(drive_mask, lba, sectors, (u32) buf);
+				buf[i] = data[(sectors - 1) * SECTOR_SIZE + i];
 			}
+			if ((err = disk_write_poll(drive_mask, next->next_lba, data_size / SECTOR_SIZE, (u32) data)) ||
+			    (err = disk_write_poll(drive_mask, next->next_lba + data_size / SECTOR_SIZE, 1, (u32) buf)))
+			{
+				return err;
+			}
+			return 0;
 		}
-
-		if (err = disk_write_poll(drive_mask, lba, sectors, (u32) buf))
-		{
-			return err;
-		}
-		n = *node;
-		node = &n;
 	}
 }
 
-u8 file_read(File* f, u8* buf, u32 num_bytes)
+u32 file_read(File* f, u8* buf, u32 num_bytes)
 {
-	FileNode n;
-	FileNode* node;
-	node->next_lba = f->start_lba;
-	node->next_sectors = f->sectors;
-	node->flags = f->flags;
+	FileNode node;
+	node.next_lba = f->start_lba;
+	node.next_sectors = f->sectors;
+	node.flags = f->flags;
+	u32 r = 0;
 
 	while (1)
 	{
 		u32 err;
-		u8 buf2[node->next_sectors * SECTOR_SIZE];
-		if (err = disk_read_poll(drive_mask, node->next_lba, node->next_sectors, (u32) buf2))
+		u8 buf2[SECTOR_SIZE];
+		if (err = disk_read_poll(drive_mask, node.next_lba + node.next_sectors - 1, 1, (u32) buf2))
 		{
-			return err;
+			return r;
 		}
-
-		for (u32 i = sizeof(FileNode); i < node->next_sectors * SECTOR_SIZE && num_bytes > 0 && i - sizeof(FileNode) < node->num_bytes; i++, num_bytes--, buf = &buf[1])
+		FileNode next = *(FileNode*) &buf2[SECTOR_SIZE - sizeof(FileNode)];
+		if (next.num_bytes <= num_bytes)
 		{
-			buf[0] = buf2[i];
-		}
-		if (num_bytes > 0 && !(node->flags & LAST_CHUNK_FLAG))
-		{
-			n = *(FileNode*) &buf2[0];
+			if (err = disk_read_poll(drive_mask, node.next_lba, num_bytes / SECTOR_SIZE, (u32) buf))
+			{
+				return r;
+			}
+			r += (num_bytes / SECTOR_SIZE) * SECTOR_SIZE;
+			if (num_bytes % SECTOR_SIZE)
+			{
+				if (err = disk_read_poll(drive_mask, node.next_lba + num_bytes / SECTOR_SIZE, 1, (u32) buf2))
+				{
+					return r;
+				}
+				for (u32 i = 0; i < num_bytes % SECTOR_SIZE; i++)
+				{
+					buf[(num_bytes / SECTOR_SIZE) * SECTOR_SIZE + i] = buf2[i];
+				}
+				r += num_bytes % SECTOR_SIZE;
+			}
+			return r;
 		}
 		else
 		{
-			return 0;
+			if (err = disk_read_poll(drive_mask, node.next_lba, next.num_bytes / SECTOR_SIZE + 1, (u32) buf))
+			{
+				return r;
+			}
+			r += next.num_bytes;
+			num_bytes -= next.num_bytes;
+			node = next;
+			if (node.flags & LAST_CHUNK_FLAG)
+			{
+				return r;
+			}
 		}
 	}
 }

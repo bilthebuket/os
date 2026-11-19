@@ -33,9 +33,17 @@ truncate -s "$rounded" main.elf
 truncate -s 8192 boot2.bin
 truncate -s 512 transition.bin
 
-size=$(($(stat -c %s boot1.bin) + $(stat -c %s boot2.bin) + $(stat -c %s main.elf) + $(stat -c %s transition.bin) + 10000000))
-echo "" > filesystem.bin
-truncate -s "$size" filesystem.bin
+# create the filesystem with all os code reserved
+SIZE=$(($(stat -c %s boot1.bin) + $(stat -c %s boot2.bin) + $(stat -c %s main.elf) + $(stat -c %s transition.bin)))
+OUTPUT="filesystem.bin"
+perl -e '
+	my $size = shift;
+	my $bits = int(($size + 511) / 512);
+	my $binary = ("1" x $bits);
+	$binary .= "0" x ((8 - length($binary) % 8) %8);
+	print pack("B*", $binary);
+' "$SIZE" > "$OUTPUT"
+truncate -s 10000000 filesystem.bin
 
 cat boot1.bin boot2.bin main.elf transition.bin filesystem.bin > os.img
 rm boot1.bin

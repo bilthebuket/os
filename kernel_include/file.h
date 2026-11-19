@@ -30,7 +30,7 @@ extern File root_directory;
 
 u8 file_open(File* to_open, File* working_directory, u8* name);
 u8 file_write(File* f, u8* data, u32 data_size);
-u8 file_read(File* f, u8* buf, u32 num_bytes);
+u32 file_read(File* f, u8* buf, u32 num_bytes);
 u8 file_move_head(File* f, u32 location);
 u32 file_get_head(File* f);
 u32 file_get_size(File* f);

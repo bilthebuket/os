@@ -12,7 +12,14 @@ global disk_write_poll
 global wait_for_busy_disk_alternate
 global request_disk_generic
 
+no_sectors:
+	mov eax, 0
+	ret 0x10
+
 disk_read_poll:
+	mov ecx, [esp + 0xC]
+	test ecx, ecx
+	jz no_sectors
 	push ebx
 	push edi
 	push ebp
@@ -55,6 +62,9 @@ poll_end:
 	ret 0x10
 
 disk_write_poll:
+	mov ecx, [esp + 0xC]
+	test ecx, ecx
+	jz no_sectors
 	push ebx
 	push edi
 	push ebp
