@@ -250,13 +250,15 @@ read_data:
 	in ax, dx
 	add cx, 0x1
 	cmp cx, LBA_SECTORS_FIRST_WORD
-	jb read_data
+	jbe read_data
 
 	mov ebx, [esp + 22]
-	mov [ebx], ax
+	mov cx, ax
 	in ax, dx
-	mov [ebx + 2], ax
-	add cx, 1
+	shl eax, 0x10
+	or eax, ecx
+	mov [ebx], eax
+	mov ecx, LBA_SECTORS_FIRST_WORD + 2
 	
 read_data2:
 	in ax, dx

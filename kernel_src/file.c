@@ -336,6 +336,12 @@ u8 file_create(File* directory, u8* name, u8 flags)
 u8 init_root_directory(u32 lba)
 {
 	root_directory.start_lba = lba;
-	root_directory.sectors = 0; // this should instead be initialzed by reading the filenode at start_lba
+	root_directory.sectors = 1;
 	root_directory.flags = DIRECTORY_FLAG;
+
+	u8 buf[SECTOR_SIZE];
+	FileNode* node = (FileNode*) &buf[SECTOR_SIZE - sizeof(FileNode)];
+	node->num_bytes = 0;
+	node->flags = LAST_CHUNK_FLAG;
+	return disk_write_poll(drive_mask, lba, 1, (u32) buf);
 }

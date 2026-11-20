@@ -17,7 +17,7 @@ u32 get_sector_table_lba(void)
 
 u32 get_num_drive_sectors(void)
 {
-	return *(u32*) DISK_SECTORS_ADDRESS;
+	return *(u32*) (KERNEL_INFO_VIRTUAL_ADDRESS + DISK_SECTORS_ADDRESS);
 }
 
 // for now we only look for one chunk of sectors that can hold all the bytes, rather than breaking the bytes into chunks of sectors
@@ -53,9 +53,25 @@ u32 find_available_sectors(u32 num_bytes)
 
 			if (found)
 			{
-				if (!(buf[k + sectors_needed / 8] >> (8 - sectors_needed % 8)))
+				if (sectors_needed / 8)
 				{
-					return (i * SECTOR_SIZE + k) * 8;
+					if (!(buf[k + sectors_needed / 8] >> (8 - sectors_needed % 8)))
+					{
+						return (i * SECTOR_SIZE + k) * 8;
+					}
+					k += sectors_needed / 8 + 1;
+				}
+				else
+				{
+					u8 mask = 0xFF << (8 - sectors_needed % 8);
+					for (u32 j = 0; j < 8 - sectors_needed % 8; j++)
+					{
+						if (!(buf[k] & (mask >> j)))
+						{
+							return (i * SECTOR_SIZE + k) * 8 + j;
+						}
+					}
+					k++;
 				}
 			}
 		}

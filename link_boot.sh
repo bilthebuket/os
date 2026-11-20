@@ -48,7 +48,7 @@ truncate -s 10000000 filesystem.bin
 cat boot1.bin boot2.bin main.elf transition.bin filesystem.bin > os.img
 rm boot1.bin
 rm boot2.bin
-rm boot2.elf
+#rm boot2.elf
 rm debug_asm.o
 rm boot2_b.o
 rm text_s.o
