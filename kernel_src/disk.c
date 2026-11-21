@@ -84,51 +84,81 @@ u8 free_sectors(u32 lba, u32 num_sectors)
 	u8 buf[SECTOR_SIZE];
 	for (u32 i = 0; i < SECTOR_SIZE; i++)
 	{
-		buf[i] = 0;
+		buf[i] = 0x00;
 	}
-	u32 sectors = get_num_drive_sectors();
 	u32 err;
-	for (u32 i = 0; i < num_sectors / (SECTOR_SIZE * 8); i++)
-	{
-		if (err =  disk_write_poll(drive_mask, sector_table_lba + i, 1, (u32) buf))
-		{
-			return err;
-		}
-	}
-	if (num_sectors % (SECTOR_SIZE * 8) && disk_read_poll(drive_mask, sector_table_lba + num_sectors / (SECTOR_SIZE * 8), 1, (u32) buf))
-	{
-		for (u32 i = 0; i < num_sectors % (SECTOR_SIZE * 8); i++)
-		{
-			buf[i / 8] &= ~(0x80 >> (i % 8));
-		}
-		disk_write_poll(drive_mask, sector_table_lba + num_sectors / (SECTOR_SIZE * 8), 1, (u32) buf);
-	}
-}
-
-u8 reserve_sectors(u32 lba, u32 num_sectors)
-{
-	u32 sector_table_lba = get_sector_table_lba();
-	u8 buf[SECTOR_SIZE];
-	for (u32 i = 0; i < SECTOR_SIZE; i++)
-	{
-		buf[i] = 0;
-	}
-	u32 sectors = get_num_drive_sectors();
-	u32 err;
-	for (u32 i = 0; i < num_sectors / (SECTOR_SIZE * 8); i++)
+	for (u32 i = lba / (SECTOR_SIZE * 8); i < (lba + num_sectors) / (SECTOR_SIZE * 8); i++)
 	{
 		if (err = disk_write_poll(drive_mask, sector_table_lba + i, 1, (u32) buf))
 		{
 			return err;
 		}
 	}
-	if (num_sectors % (SECTOR_SIZE * 8) && disk_read_poll(drive_mask, sector_table_lba + num_sectors / (SECTOR_SIZE * 8), 1, (u32) buf))
+	if (num_sectors % (SECTOR_SIZE * 8) && !disk_read_poll(drive_mask, sector_table_lba + (lba + num_sectors) / (SECTOR_SIZE * 8), 1, (u32) buf))
 	{
 		for (u32 i = 0; i < num_sectors % (SECTOR_SIZE * 8); i++)
 		{
+			buf[i / 8] &= ~(0x80 >> (i % 8));
+		}
+		return disk_write_poll(drive_mask, sector_table_lba + (lba + num_sectors) / (SECTOR_SIZE * 8), 1, (u32) buf);
+	}
+
+	return 0;
+}
+
+u8 reserve_sectors(u32 lba, u32 num_sectors)
+{
+	u32 sector_table_lba = get_sector_table_lba();
+	u8 buf[SECTOR_SIZE];
+	u32 err;
+
+	if (lba % (SECTOR_SIZE * 8))
+	{
+		u32 this_sector_lba = sector_table_lba + lba / (SECTOR_SIZE * 8);
+		if (err = disk_read_poll(drive_mask, this_sector_lba, 1, (u32) buf))
+		{
+			return err;
+		}
+		for (u32 i = lba % (SECTOR_SIZE * 8); i < SECTOR_SIZE * 8 && num_sectors > 0; i++, num_sectors--, lba++)
+		{
 			buf[i / 8] |= 0x80 >> (i % 8);
 		}
-		disk_write_poll(drive_mask, sector_table_lba + num_sectors / (SECTOR_SIZE * 8), 1, (u32) buf);
+		if (err = disk_write_poll(drive_mask, this_sector_lba, 1, (u32) buf))
+		{
+			return err;
+		}
+	}
+	if (num_sectors / (SECTOR_SIZE * 8))
+	{
+		for (u32 i = 0; i < SECTOR_SIZE; i++)
+		{
+			buf[i] = 0XFF;
+		}
+		for (u32 i = 0; i < num_sectors / (SECTOR_SIZE * 8); i++)
+		{
+			if (err = disk_read_poll(drive_mask, sector_table_lba + lba / (SECTOR_SIZE * 8) + i, 1, (u32) buf))
+			{
+				return err;
+			}
+		}
+		lba += num_sectors / (SECTOR_SIZE * 8);
+		num_sectors -= num_sectors / (SECTOR_SIZE * 8);
+	}
+	if (num_sectors)
+	{
+		u32 this_sector_lba = sector_table_lba + lba / (SECTOR_SIZE * 8);
+		if (err = disk_read_poll(drive_mask, this_sector_lba, 1, (u32) buf))
+		{
+			return err;
+		}
+		for (u32 i = 0; i < num_sectors; i++)
+		{
+			buf[i / 8] |= 0x80 >> (i % 8);
+		}
+		if (err = disk_write_poll(drive_mask, this_sector_lba, 1, (u32) buf))
+		{
+			return err;
+		}
 	}
 
 	return 0;

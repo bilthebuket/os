@@ -3,6 +3,8 @@ qemu-system-i386 \
 	-m 4G \
 	-drive file=os.img,format=raw \
 	-trace events=events.txt,file=trace.log \
+	-s \
+	-S \
 	-no-reboot \
 	-no-shutdown \
 	-monitor stdio

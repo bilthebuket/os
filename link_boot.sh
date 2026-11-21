@@ -33,22 +33,73 @@ truncate -s "$rounded" main.elf
 truncate -s 8192 boot2.bin
 truncate -s 512 transition.bin
 
-# create the filesystem with all os code reserved
-SIZE=$(($(stat -c %s boot1.bin) + $(stat -c %s boot2.bin) + $(stat -c %s main.elf) + $(stat -c %s transition.bin)))
-OUTPUT="filesystem.bin"
-perl -e '
-	my $size = shift;
-	my $bits = int(($size + 511) / 512);
-	my $binary = ("1" x $bits);
-	$binary .= "0" x ((8 - length($binary) % 8) %8);
-	print pack("B*", $binary);
-' "$SIZE" > "$OUTPUT"
-truncate -s 10000000 filesystem.bin
+# create the filesystem with all os code and sector allocation table reserved (all of this is ai generated)
 
-cat boot1.bin boot2.bin main.elf transition.bin filesystem.bin > os.img
+OUTPUT="filesystem.bin"
+FILESYSTEM_SIZE=10000000
+SECTOR_SIZE=512
+
+SIZE=$((
+    $(stat -c %s boot1.bin) +
+    $(stat -c %s boot2.bin) +
+    $(stat -c %s main.elf) +
+    $(stat -c %s transition.bin)
+))
+
+OS_SECTORS=$((SIZE / SECTOR_SIZE))
+
+perl -e '
+    use strict;
+    use warnings;
+
+    my ($os_size, $filesystem_size) = @ARGV;
+
+    my $sector_size = 512;
+
+    # Total sectors in the ENTIRE os.img.
+    my $total_size = $os_size + $filesystem_size;
+
+    my $total_sectors = int(
+        ($total_size + $sector_size - 1) / $sector_size
+    );
+
+    # Calculate bitmap storage requirements.
+    my $bitmap_bytes = int(($total_sectors + 7) / 8);
+
+    my $bitmap_sectors = int(
+        ($bitmap_bytes + $sector_size - 1) / $sector_size
+    );
+
+    # OS sectors are already aligned.
+    my $os_sectors = $os_size / $sector_size;
+
+    # Reserve OS code and bitmap sectors.
+    my $reserved = $os_sectors + $bitmap_sectors;
+
+    die "Not enough sectors for reserved regions\n"
+        if $reserved > $total_sectors;
+
+    # One bit per sector of the entire os.img.
+    # 1 = reserved, 0 = free.
+    my $binary = ("1" x $reserved);
+    $binary .= "0" x ($total_sectors - $reserved);
+
+    # Pad to the full bitmap storage size.
+    my $bitmap_storage_bits = $bitmap_sectors * $sector_size * 8;
+
+    $binary .= "0" x ($bitmap_storage_bits - length($binary));
+
+    # Write only the bitmap sectors.
+    print pack("B*", $binary);
+' "$SIZE" "$FILESYSTEM_SIZE" > "$OUTPUT"
+
+truncate -s "$FILESYSTEM_SIZE" "$OUTPUT"
+
+cat boot1.bin boot2.bin main.elf transition.bin "$OUTPUT" > os.img
+
 rm boot1.bin
 rm boot2.bin
-#rm boot2.elf
+rm boot2.elf
 rm debug_asm.o
 rm boot2_b.o
 rm text_s.o
@@ -67,5 +118,5 @@ rm disk_asm_k.o
 rm global_k.o
 rm disk_k.o
 rm disk_s.o
-rm filesystem.bin
+rm "$OUTPUT"
 rm string_k.o

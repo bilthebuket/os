@@ -291,36 +291,84 @@ u8 file_create(File* directory, u8* name, u8 flags)
 		}
 
 		FileNode* next = (FileNode*) &buf[SECTOR_SIZE - sizeof(FileNode)];
-		if (next->num_bytes + sizeof(File) < node.next_sectors * SECTOR_SIZE - sizeof(FileNode))
+		if (next->num_bytes >= (node.next_sectors - 1) * SECTOR_SIZE && next->num_bytes + sizeof(File) < node.next_sectors * SECTOR_SIZE - sizeof(FileNode))
 		{
-			u8 buf2[SECTOR_SIZE * 2];
-			if (err = disk_read_poll(drive_mask, node.next_lba + next->num_bytes / SECTOR_SIZE, 2, (u32) buf2))
+			if (node.next_lba + next->num_bytes / SECTOR_SIZE == node.next_lba + node.next_sectors - 1)
 			{
-				return err;
+				File* to_create = (File*) &buf[next->num_bytes % SECTOR_SIZE];
+				u32 i = 0;
+				for (; name[i] != '\0' && i < NAME_MAX_LENGTH; i++)
+				{
+					to_create->name[i] = name[i];
+				}
+				to_create->name[i] = '\0';
+				to_create->flags = flags;
+				to_create->sectors = 1;
+				if (!(to_create->start_lba = find_available_sectors(SECTOR_SIZE)))
+				{
+					return DISK_FULL;
+				}
+				if (err = reserve_sectors(to_create->start_lba, 1))
+				{
+					return err;
+				}
+				
+				next->num_bytes += sizeof(File);
+				if (err = disk_write_poll(drive_mask, node.next_lba + next->num_bytes / SECTOR_SIZE, 1, (u32) buf))
+				{
+					return err;
+				}
 			}
-			File* to_create = (File*) &buf2[next->num_bytes % SECTOR_SIZE];
-			u32 i = 0;
-			for (; name[i] != '\0' && i < NAME_MAX_LENGTH; i++)
+			else
 			{
-				to_create->name[i] = name[i];
-			}
-			to_create->name[i] = '\0';
-			to_create->flags = flags;
-			to_create->sectors = 1;
-			if (!(to_create->start_lba = find_available_sectors(SECTOR_SIZE)))
-			{
-				return DISK_FULL;
-			}
-			if (err = reserve_sectors(to_create->start_lba, 1))
-			{
-				return err;
-			}
-			next->num_bytes += sizeof(File);
-			if (err = disk_write_poll(drive_mask, node.next_lba + next->num_bytes / SECTOR_SIZE, 2, (u32) buf2))
-			{
-				return err;
+				u32 buf_size = SECTOR_SIZE;
+				if (next->num_bytes % SECTOR_SIZE + sizeof(File) > SECTOR_SIZE)
+				{
+					buf_size += SECTOR_SIZE;
+				}
+				u8 buf2[buf_size];
+				if (err = disk_read_poll(drive_mask, node.next_lba + next->num_bytes / SECTOR_SIZE, buf_size / SECTOR_SIZE, (u32) buf2))
+				{
+					return err;
+				}
+
+				File* to_create = (File*) &buf2[next->num_bytes % SECTOR_SIZE];
+				u32 i = 0;
+				for (; name[i] != '\0' && i < NAME_MAX_LENGTH; i++)
+				{
+					to_create->name[i] = name[i];
+				}
+				to_create->name[i] = '\0';
+				to_create->flags = flags;
+				to_create->sectors = 1;
+				if (!(to_create->start_lba = find_available_sectors(SECTOR_SIZE)))
+				{
+					return DISK_FULL;
+				}
+				if (err = reserve_sectors(to_create->start_lba, 1))
+				{
+					return err;
+				}
+
+				bool is_stupid_edge_case = false;
+				if (buf_size == 2 * SECTOR_SIZE && next->num_bytes + sizeof(File) >= (node.next_sectors - 1) * SECTOR_SIZE)
+				{
+					next = (FileNode*) &buf2[2 * SECTOR_SIZE - sizeof(FileNode)];
+					is_stupid_edge_case = true;
+				}
+
+				next->num_bytes += sizeof(File);
+				if (err = disk_write_poll(drive_mask, node.next_lba + next->num_bytes / SECTOR_SIZE, buf_size / SECTOR_SIZE, (u32) buf2))
+				{
+					return err;
+				}
+				if (!is_stupid_edge_case && (err = disk_write_poll(drive_mask, node.next_lba + node.next_sectors - 1, 1, (u32) buf)))
+				{
+					return err;
+				}
 			}
 			return 0;
+
 		}
 		else if (next->flags & LAST_CHUNK_FLAG)
 		{
@@ -343,5 +391,10 @@ u8 init_root_directory(u32 lba)
 	FileNode* node = (FileNode*) &buf[SECTOR_SIZE - sizeof(FileNode)];
 	node->num_bytes = 0;
 	node->flags = LAST_CHUNK_FLAG;
-	return disk_write_poll(drive_mask, lba, 1, (u32) buf);
+	u32 err;
+	if (err = disk_write_poll(drive_mask, lba, 1, (u32) buf))
+	{
+		return err;
+	}
+	return reserve_sectors(lba, 1);
 }

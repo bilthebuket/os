@@ -94,6 +94,7 @@ write_data_loop:
 	mov ax, [edi]
 	out dx, ax
 	sub ecx, 1
+	add edi, 2
 	test ecx, ecx
 	jnz write_data_loop
 
