@@ -2,9 +2,10 @@ qemu-system-i386 \
 	-smp 1 \
 	-m 4G \
 	-drive file=os.img,format=raw \
+	-s \
+	-S \
 	-d int,cpu_reset,guest_errors \
 	-D qemu.log \
-	-trace events=events.txt,file=trace.log \
 	-no-reboot \
 	-no-shutdown \
 	-monitor stdio

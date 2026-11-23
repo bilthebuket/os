@@ -109,7 +109,7 @@ disk_isr:
 
 	mov eax, [disk_func_addr]
 	cmp eax, 0x0
-	je disk_error
+	je slave_isr_end ; an interrupt was generated where data is ready and theres no error, likely indicating we're doing polling with interrupts enabled, so just do nothing
 	call eax
 	jmp slave_isr_end
 
