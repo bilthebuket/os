@@ -10,6 +10,7 @@ void _start(u32 root_lba, u32 __drive_mask)
 {
 	clear_screen();
 	puts(0,0,"reached kernel main",WHITE_TEXT);
+	setup_interrupts(KERNEL_INFO_VIRTUAL_ADDRESS + IDT_ADDRESS);
 	drive_mask = __drive_mask;
 	init_root_lba(root_lba);
 	u32 root_directory_lba = find_available_sectors(SECTOR_SIZE);
@@ -31,7 +32,6 @@ void _start(u32 root_lba, u32 __drive_mask)
 	u8 buf[sizeof(str)];
 	file_read(&f, buf, sizeof(buf));
 	puts(1,0,buf,WHITE_TEXT);
-	//setup_interrupts(KERNEL_INFO_VIRTUAL_ADDRESS + IDT_ADDRESS);
 spin_lock:
 	asm("hlt");
 	goto spin_lock;

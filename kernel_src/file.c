@@ -20,7 +20,7 @@ void file_copy(File* to, File* from)
 	to->flags = from->flags;
 }
 
-u8 file_open(File* to_open, File* working_directory, u8* name)
+u32 file_open(File* to_open, File* working_directory, u8* name)
 {
 	if (!(working_directory->flags & DIRECTORY_FLAG))
 	{
@@ -59,149 +59,142 @@ u8 file_open(File* to_open, File* working_directory, u8* name)
 	}
 }
 
-u8 file_write(File* f, u8* data, u32 data_size)
+void recursive_free_sectors(FileNode* node)
 {
-	FileNode node;
-	node.next_lba = f->start_lba;
-	node.next_sectors = f->sectors;
-	node.flags = f->flags;
-
-	while (1)
+	if (node->flags & LAST_CHUNK_FLAG)
 	{
-		u8 buf[SECTOR_SIZE];
-		u32 err;
-		u32 lba = node.next_lba;
-		u32 sectors = node.next_sectors;
-		if (err = disk_read_poll(drive_mask, lba + sectors - 1, 1, (u32) buf))
+		return;
+	}
+
+	u8 buf[SECTOR_SIZE];
+	if (disk_read_poll(drive_mask, node->next_lba + node->next_sectors - 1, 1, (u32) buf))
+	{
+		return;
+	}
+	free_sectors(node->next_lba, node->next_sectors);
+	recursive_free_sectors(&buf[SECTOR_SIZe - sizeof(FileNode)]);
+}
+
+u32 allocate_file_sectors(FileNode* node, u32 num_bytes)
+{
+	if (num_bytes % SECTOR_SIZE)
+	{
+		num_bytes += SECTOR_SIZE - num_bytes % SECTOR_SIZE;
+	}
+
+	u32 lba = find_available_sectors(num_bytes);
+	if (!lba)
+	{
+		return DISK_FULL;
+	}
+
+	node->next_lba = lba;
+	node->next_sectors = num_bytes / SECTOR_SIZE;
+
+	u8 buf[SECTOR_SIZE];
+	FileNode* next = &buf[SECTOR_SIZE - sizeof(FileNode)];
+	next->num_bytes = 0;
+	next->flags = LAST_CHUNK_FLAG;
+	return disk_write_poll(drive_mask, lba + num_bytes / SECTOR_SIZE - 1, 1, (u32) buf);
+}
+
+u32 handle_write_excess(FileNode* node, u8* data, u32 data_size, u8* last_sector_buf)
+{
+	FileNode* next = (FileNode*) &last_sector_buf[SECTOR_SIZE - sizeof(FileNode)];
+	u32 err;
+	if (next->num_bytes / SECTOR_SIZE < (node->next_sectors - 1) * SECTOR_SIZE)
+	{
+		if (data_size > 0)
+		{
+			u8 buf[SECTOR_SIZE];
+			for (u32 i = 0; i < data_size; i++)
+			{
+				buf[i] = data[i];
+			}
+			if (err = disk_write_poll(drive_mask, node->next_lba + next->num_bytes / SECTOR_SIZE, 1, (u32) buf))
+			{
+				return err;
+			}
+			next->num_bytes += data_size;
+			data_size = 0;
+		}
+	}
+	else
+	{
+		u32 i = 0;
+		for (; i < data_size % SECTOR_SIZE && i < SECTOR_SIZE - sizeof(FileNode); i++)
+		{
+			last_sector_buf[i] = data[i];
+		}
+		data = &data[i];
+		data_size -= i;
+		next->num_bytes += i;
+	}
+
+	if (data_size == 0)
+	{
+		recursive_free_sectors(next);
+		next->flags |= LAST_CHUNK_FLAG;
+		return disk_write_poll(drive_mask, node->next_lba + node->next_sectors - 1, 1, (u32) last_sector_buf);
+	}
+
+	if (next->flags & LAST_CHUNK_FLAG)
+	{
+		if (err = allocate_file_sectors(next, data_size))
 		{
 			return err;
 		}
-
-		FileNode* next = (FileNode*) &buf[SECTOR_SIZE - sizeof(FileNode)];
-
-		if (data_size < sectors * SECTOR_SIZE - sizeof(FileNode))
+		next->flags &= ~LAST_CHUNK_FLAG;
+		if (err = disk_write_poll(drive_mask, node->next_lba + node->next_sectors - 1, 1, (u32) last_sector_buf))
 		{
-			if (err = disk_write_poll(drive_mask, lba, data_size / SECTOR_SIZE, (u32) data))
-			{
-				return err;
-			}
-			for (u32 i = 0; i < data_size % SECTOR_SIZE; i++)
-			{
-				buf[i] = data[(data_size / SECTOR_SIZE) * SECTOR_SIZE + i];
-			}
-			next->num_bytes = data_size;
-			next->flags |= LAST_CHUNK_FLAG;
-			if (err = disk_write_poll(drive_mask, lba + data_size / SECTOR_SIZE, 1, (u32) buf))
-			{
-				return err;
-			}
-
-			if (sectors > data_size / SECTOR_SIZE + 1)
-			{
-				if (err = free_sectors(lba + data_size / SECTOR_SIZE + 1, sectors - (data_size / SECTOR_SIZE + 1)))
-				{
-					return err;
-				}
-			}
-			node = *next;
-			do
-			{
-				lba = node.next_lba;
-				sectors = node.next_sectors;
-				if (err = disk_read_poll(drive_mask, lba + sectors - 1, 1, (u32) buf))
-				{
-					return err;
-				}
-				if (err = free_sectors(lba, sectors))
-				{
-					return err;
-				}
-				node = *(FileNode*) &buf[SECTOR_SIZE - sizeof(FileNode)];
-			}
-			while (!(node.flags & LAST_CHUNK_FLAG));
-			return 0;
-		}
-		else if (data_size > sectors * SECTOR_SIZE - sizeof(FileNode))
-		{
-			u32 amount_writing = sectors * SECTOR_SIZE - sizeof(FileNode);
-			next->num_bytes = amount_writing;
-			for (u32 i = 0; i < SECTOR_SIZE - sizeof(FileNode); i++)
-			{
-				buf[i] = data[(sectors - 1) * SECTOR_SIZE + i];
-			}
-			if (next->flags & LAST_CHUNK_FLAG)
-			{
-				u32 next_lba = find_available_sectors(data_size - amount_writing + sizeof(FileNode));
-				if (!next_lba)
-				{
-					return DISK_FULL;
-				}
-				next->flags &= ~LAST_CHUNK_FLAG;
-				next->next_lba = next_lba;
-				next->next_sectors = (data_size - amount_writing + sizeof(FileNode)) / SECTOR_SIZE;
-				if (err = reserve_sectors(next->next_lba, next->next_sectors))
-				{
-					return err;
-				}
-				if ((data_size - amount_writing + sizeof(FileNode)) % SECTOR_SIZE)
-				{
-					next->next_sectors++;
-				}
-
-				if ((err = disk_write_poll(drive_mask, lba, sectors - 1, (u32) data)) ||
-				    (err = disk_write_poll(drive_mask, lba + sectors - 1, 1, (u32) buf)))
-				{
-					return err;
-				}
-
-				node = *next;
-				data_size -= amount_writing;
-				data = &data[amount_writing];
-
-				for (u32 i = 0; i < data_size % SECTOR_SIZE; i++)
-				{
-					buf[i] = data[data_size - data_size % SECTOR_SIZE + i];
-				}
-				next = (FileNode*) &buf[SECTOR_SIZE - sizeof(FileNode)];
-				next->num_bytes = data_size;
-				next->flags = LAST_CHUNK_FLAG;
-
-				if ((err = disk_write_poll(drive_mask, next_lba, data_size / SECTOR_SIZE, (u32) data)) ||
-				    (err = disk_write_poll(drive_mask, next_lba + data_size / SECTOR_SIZE, 1, (u32) buf)))
-				{
-					return err;
-				}
-				return 0;
-			}
-			else
-			{
-				if ((err = disk_write_poll(drive_mask, lba, sectors - 1, (u32) data)) ||
-				    (err = disk_write_poll(drive_mask, lba + sectors - 1, 1, (u32) buf)))
-				{
-					return err;
-				}
-
-				node = *next;
-				data_size -= amount_writing;
-				data = &data[amount_writing];
-			}
-		}
-		else
-		{
-			u32 amount_writing = sectors * SECTOR_SIZE - sizeof(FileNode);
-			next->num_bytes = amount_writing;
-			for (u32 i = 0; i < SECTOR_SIZE - sizeof(FileNode); i++)
-			{
-				buf[i] = data[(sectors - 1) * SECTOR_SIZE + i];
-			}
-			if ((err = disk_write_poll(drive_mask, next->next_lba, data_size / SECTOR_SIZE, (u32) data)) ||
-			    (err = disk_write_poll(drive_mask, next->next_lba + data_size / SECTOR_SIZE, 1, (u32) buf)))
-			{
-				return err;
-			}
-			return 0;
+			return err;
 		}
 	}
+
+	return file_write_helper(next, data, data_size);
+}
+
+u32 file_write_helper(FileNode* node, u8* data, u32 data_size)
+{
+	u8 buf[SECTOR_SIZE];
+	u32 err;
+	if (err = disk_read_poll(drive_mask, node->next_lba + node->next_sectors - 1, 1, (u32) buf))
+	{
+		return err;
+	}
+
+	FileNode* next = &buf[SECTOR_SIZE - sizeof(FileNode)];
+	if (data_size / SECTOR_SIZE <= node.next_sectors - 1)
+	{
+		if (err = disk_write_poll(drive_mask, node->next_lba, data_size / SECTOR_SIZE, (u32) data))
+		{
+			return err;
+		}
+		next->num_bytes = (data_size / SECTOR_SIZE) * SECTOR_SIZE;
+		data = &data[next->num_bytes];
+		data_size -= next->num_bytes;
+	}
+	else
+	{
+		if (err = disk_write_poll(drive_mask, node->next_lba, node->next_sectors - 1, (u32) data))
+		{
+			return err;
+		}
+		next->num_bytes = (node->next_sectors - 1) * SECTOR_SIZE;
+		data = &data[next->num_bytes];
+		data_size -= next->num_bytes;
+	}
+
+	handle_write_excess(node, data, data_size, buf);
+}
+
+u32 file_write(File* f, u8* data, u32 data_size)
+{
+	FileNode node;
+	node.next_sectors = f->sectors;
+	node.next_lba = f->start_lba;
+	node.flags = 0;
+	return file_write_helper(&node, data, data_size);
 }
 
 u32 file_read(File* f, u8* buf, u32 num_bytes)
@@ -259,7 +252,7 @@ u32 file_read(File* f, u8* buf, u32 num_bytes)
 	}
 }
 
-u8 file_move_head(File* f, u32 location)
+u32 file_move_head(File* f, u32 location)
 {
 	return 0;
 }
@@ -274,114 +267,67 @@ u32 file_get_size(File* f)
 	return 0;
 }
 
-u8 file_create(File* directory, u8* name, u8 flags)
+u32 file_create_helper(FileNode* node, u8* name, u8 flags)
 {
-	FileNode node;
-	node.next_lba = directory->start_lba;
-	node.next_sectors = directory->sectors;
-	node.flags = directory->flags;
-
-	while (1)
+	u8 buf[SECTOR_SIZE];
+	u32 err;
+	if (err = disk_read_poll(drive_mask, node->next_lba + node->next_sectors - 1, 1, (u32) buf))
 	{
-		u32 err;
-		u8 buf[SECTOR_SIZE];
-		if (err = disk_read_poll(drive_mask, node.next_lba + node.next_sectors - 1, 1, (u32) buf))
+		return err;
+	}
+	FileNode* next = &buf[SECTOR_SIZE - sizeof(FileNode)];
+	u32 available_space = node->next_sectors * SECTOR_SIZE - sizeof(FileNode) - next->num_bytes;
+
+	if (available_space >= sizeof(File))
+	{
+		File f;
+		f.start_lba = find_available_sectors(SECTOR_SIZE);
+		if (!f.start_lba)
 		{
-			return err;
+			return DISK_FULL;
 		}
-
-		FileNode* next = (FileNode*) &buf[SECTOR_SIZE - sizeof(FileNode)];
-		if (next->num_bytes >= (node.next_sectors - 1) * SECTOR_SIZE && next->num_bytes + sizeof(File) < node.next_sectors * SECTOR_SIZE - sizeof(FileNode))
+		f.sectors = 1;
+		f.flags = flags;
+		u32 i = 0;
+		for (; i < NAME_MAX_LENGTH && name[i] != '\0'; i++)
 		{
-			if (node.next_lba + next->num_bytes / SECTOR_SIZE == node.next_lba + node.next_sectors - 1)
-			{
-				File* to_create = (File*) &buf[next->num_bytes % SECTOR_SIZE];
-				u32 i = 0;
-				for (; name[i] != '\0' && i < NAME_MAX_LENGTH; i++)
-				{
-					to_create->name[i] = name[i];
-				}
-				to_create->name[i] = '\0';
-				to_create->flags = flags;
-				to_create->sectors = 1;
-				if (!(to_create->start_lba = find_available_sectors(SECTOR_SIZE)))
-				{
-					return DISK_FULL;
-				}
-				if (err = reserve_sectors(to_create->start_lba, 1))
-				{
-					return err;
-				}
-				
-				next->num_bytes += sizeof(File);
-				if (err = disk_write_poll(drive_mask, node.next_lba + next->num_bytes / SECTOR_SIZE, 1, (u32) buf))
-				{
-					return err;
-				}
-			}
-			else
-			{
-				u32 buf_size = SECTOR_SIZE;
-				if (next->num_bytes % SECTOR_SIZE + sizeof(File) > SECTOR_SIZE)
-				{
-					buf_size += SECTOR_SIZE;
-				}
-				u8 buf2[buf_size];
-				if (err = disk_read_poll(drive_mask, node.next_lba + next->num_bytes / SECTOR_SIZE, buf_size / SECTOR_SIZE, (u32) buf2))
-				{
-					return err;
-				}
-
-				File* to_create = (File*) &buf2[next->num_bytes % SECTOR_SIZE];
-				u32 i = 0;
-				for (; name[i] != '\0' && i < NAME_MAX_LENGTH; i++)
-				{
-					to_create->name[i] = name[i];
-				}
-				to_create->name[i] = '\0';
-				to_create->flags = flags;
-				to_create->sectors = 1;
-				if (!(to_create->start_lba = find_available_sectors(SECTOR_SIZE)))
-				{
-					return DISK_FULL;
-				}
-				if (err = reserve_sectors(to_create->start_lba, 1))
-				{
-					return err;
-				}
-
-				bool is_stupid_edge_case = false;
-				if (buf_size == 2 * SECTOR_SIZE && next->num_bytes + sizeof(File) >= (node.next_sectors - 1) * SECTOR_SIZE)
-				{
-					next = (FileNode*) &buf2[2 * SECTOR_SIZE - sizeof(FileNode)];
-					is_stupid_edge_case = true;
-				}
-
-				next->num_bytes += sizeof(File);
-				if (err = disk_write_poll(drive_mask, node.next_lba + next->num_bytes / SECTOR_SIZE, buf_size / SECTOR_SIZE, (u32) buf2))
-				{
-					return err;
-				}
-				if (!is_stupid_edge_case && (err = disk_write_poll(drive_mask, node.next_lba + node.next_sectors - 1, 1, (u32) buf)))
-				{
-					return err;
-				}
-			}
-			return 0;
-
+			f.name[i] = name[i];
 		}
-		else if (next->flags & LAST_CHUNK_FLAG)
+		f.name[i] = '\0';
+
+		u8* f_bytes = (u8*) &f;
+		if (next->num_bytes >= (node->next_sectors - 1) * SECTOR_SIZE)
 		{
-			return 0;
+			for (u32 i = 0; i < sizeof(File); i++)
+			{
+
+			}
 		}
 		else
 		{
-			return 0;
+
 		}
+	}
+	else if (next->flags & LAST_CHUNK_FLAG)
+	{
+		if (err = allocate_file_sectors(next, sizeof(File)))
+		{
+			return err;
+		}
+		return disk_write_helper(next, (u8*) &File, sizeof(File));
 	}
 }
 
-u8 init_root_directory(u32 lba)
+u32 file_create(File* directory, u8* name, u8 flags)
+{
+	FileNode node;
+	node.next_sectors = directory->sectors;
+	node.next_lba = directory->start_lba;
+	node.flags = 0;
+	return file_create_helper(&node, name, flags);
+}
+
+u32 init_root_directory(u32 lba)
 {
 	root_directory.start_lba = lba;
 	root_directory.sectors = 1;
