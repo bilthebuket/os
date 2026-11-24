@@ -38,7 +38,8 @@ void map_virtual_to_physical
 
 		if (frame_table_index >= FT_NUM_ENTRIES)
 		{
-			// todo: handle frame replacement
+			asm("cli");
+			asm("hlt");
 		}
 
 		pde_init(&page_table[virtual_address / FRAME_SIZE + i], frame_table_index);

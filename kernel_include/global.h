@@ -4,5 +4,6 @@
 #include "shared_include/def.h"
 
 extern u32 drive_mask;
+extern s16 active_process;
 
 #endif
