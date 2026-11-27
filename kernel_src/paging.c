@@ -3,31 +3,46 @@
 #include "kernel_include/file.h"
 
 // directory with all the page tables not in memory
-File* process_page_tables;
+File page_tables;
 
-u8 init_process_page_table_directory(void)
+u32 init_process_page_table_directory(void)
 {
-
+	file_create(&root_directory, "paging", ROOT_DIRECTORY);
+	file_open(&page_tables, &root_directory, "paging");
 }
 
-u8 free_frame(FrameTableEntry* frame)
+u32 free_frame(FrameTableEntry* frame)
 {
-	PageDirectoryEntry* page_table;
-	PageDirectoryEntry buf[PAGING_TABLE_NUM_ENTRIES];
-	if (frame->pid == active_process)
+	if (frame->pid == active_process || frame->pid == ROOT_PROCESS)
 	{
-		page_table = (PageDirectoryEntry*) (KERNEL_INFO_VIRTUAL_ADDRESS + ACTIVE_PT_ADDRESS);
-	}
-	else if (frame->pid == ROOT_PROCESS)
-	{
-		page_table = (PageDirectoryEntry*) (KERNEL_INFO_VIRTUAL_ADDRESS + ROOT_PT_ADDRESS);
+		PageDirectoryEntry* page_table;
+		if (frame->pid == active_process)
+		{
+			page_table = (PageDirectoryEntry*) (KERNEL_INFO_VIRTUAL_ADDRESS + ACTIVE_PT_ADDRESS);
+		}
+		else
+		{
+			page_table = (PageDirectoryEntry*) (KERNEL_INFO_VIRTUAL_ADDRESS + ROOT_PT_ADDRESS);
+		}
+		page_table[frame->pde_index].metadata &= ~PRESENT_BIT;
+		return 0;
 	}
 	else
 	{
 		File f;
-		file_open(&f, root_d
+		u8 str[NUMBER_MAX_DIGITS];
+		int_to_str(frame->pid, str);
+		file_open(&f, &page_tables, str);
+
+		PageDirectoryEntry buf[PAGING_TABLE_NUM_ENTRIES];
+		u32 err = file_read(drive_mask, buf, sizeof(buf));
+		if (err)
+		{
+			return err;
+		}
+		buf[frame->pde_index].metadata &= ~PRESENT_BIT;
+		return file_write(drive_mask, buf, sizeof(buf));
 	}
-	return 1;
 }
 
 void map_virtual_to_physical_with_replacement
@@ -54,7 +69,7 @@ void map_virtual_to_physical_with_replacement
 	{
 		if (frame_table[i].pid != pid && frame_table[i].pid != FRAME_RESERVED)
 		{
-			if (!free_frame(&frame_table[i]))
+			if (free_frame(&frame_table[i]))
 			{
 				return;
 			}
@@ -66,7 +81,7 @@ void map_virtual_to_physical_with_replacement
 	{
 		if (frame_table[i].pid != FRAME_RESERVED)
 		{
-			if (!free_frame(&frame_table[i]))
+			if (free_frame(&frame_table[i]))
 			{
 				return;
 			}

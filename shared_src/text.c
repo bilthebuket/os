@@ -2,6 +2,7 @@
 #include "shared_include/def.h"
 #include "shared_include/paging.h"
 #include "shared_include/mem.h"
+#include "shared_include/string.h"
 
 #define BYTES_PER_CELL 2
 
@@ -36,19 +37,9 @@ void __attribute__((stdcall)) puts(u32 y, u32 x, u8* str, u8 attributes)
 
 void __attribute__((stdcall)) putnum(u32 y, u32 x, u32 num, u8 attributes)
 {
-	u8 buf[MAX_DIGITS];
-	for (u8 i = 0; i < MAX_DIGITS; i++)
-	{
-		buf[MAX_DIGITS - i - 1] = '0' + num % 10;
-		num /= 10;
-	}
-	u8* str = &buf[0];
-	u8 i = 0;
-	for (; i < MAX_DIGITS && str[0] == 0; i++, str = &str[1]) {}
-	for (u8 j = 0; i < MAX_DIGITS; i++, j++)
-	{
-		putc(y, x + j, str[j], attributes);
-	}
+	u8 buf[NUMBER_MAX_DIGITS];
+	int_to_str(num, buf);
+	puts(y, x, buf, attributes);
 }
 
 void clear_screen(void)

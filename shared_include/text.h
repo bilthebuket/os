@@ -7,7 +7,6 @@
 #define SCREEN_HEIGHT 25
 
 #define WHITE_TEXT 0x0F
-#define MAX_DIGITS 10
 
 #define TEXT_BUF_ADDR 0xB8000
 

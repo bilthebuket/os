@@ -1,5 +1,5 @@
-#ifndef ELF_H
-#define ELF_H
+#ifndef SHARED_ELF_H
+#define SHARED_ELF_H
 
 #include "shared_include/def.h"
 
